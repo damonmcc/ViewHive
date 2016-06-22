@@ -1,7 +1,6 @@
-Bee Camera v0.5 README
+Bee Camera v0.5.1 README
 
 Python script to record video on a Raspberry Pi and save to external USB storage as an mp4.
 
 TODO
-Automatically delete unneeded files
 Launch script at startup
