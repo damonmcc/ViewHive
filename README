@@ -1,4 +1,5 @@
 Bee Camera v0.5.2 README
+==========
 
 Python script to record video on a Raspberry Pi and save to external USB storage as an mp4.
 
@@ -8,18 +9,8 @@ crontab
 WittyPi
 
 Issues
-Auto run can't find USB storage:
-Traceback (most recent call last):
-  File "cameraBEES.py", line 37, in <module>
-    shutil.copy(srcroot, dstroot)
-  File "/usr/lib/python2.7/shutil.py", line 119, in copy
-    copyfile(src, dst)
-  File "/usr/lib/python2.7/shutil.py", line 83, in copyfile
-    with open(dst, 'wb') as fdst:
-IOError: [Errno 21] Is a directory: '/media/pi/BEEVIDS/'
-
+~
 
 TODO
-Fix shutil.copy issue (delay operation until media appears?)
 Adjust video overlay (elapsed time)
 Create GUI to set record time without openning code

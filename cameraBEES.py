@@ -16,7 +16,9 @@ def silentremove(filename):
 camera = PiCamera()
 camera.rotation = 180
 camera.resolution = (1920, 1080)
-camera.framerate = 15
+camera.framerate = 30
+#camera.resolution = (1296, 730)
+#camera.framerate = 49
 camera.annotate_background = Color('grey')
 camera.annotate_foreground = Color('purple')
 timestamp = dt.now().strftime("%Y-%m-%d_%H.%M.%S")
@@ -24,15 +26,18 @@ srcfile = '%s.h264' % timestamp
 convCommand = 'MP4Box -add {0}.h264 {1}.mp4'.format(timestamp,timestamp)
 srcroot = '/home/pi/Videos/%s' % srcfile
 dstroot = '/media/pi/BEEVIDS/'
-scriptroot = '/home/pi/Documents/Python 3 Projects/Bee Camera'
+codetroot = '/home/pi/Documents/Python 3 Projects/Bee Camera'
+recRes = 0.01 # resolution of elapsed time counter
+
+recPeriod = 3 # Seconds to record
 
 camera.start_preview(alpha=200)
 camera.start_recording(srcroot, format='h264')
-for i in range(6):
-    timeElapS = float(i)*0.5
-    camera.annotate_text = "Elapsed: 0:00:%s" % timeElapS
-    sleep(0.5)
-camera.wait_recording(3)
+for i in range(recPeriod*int((1/recRes))):
+    timeElapS = "%.2f" % round(float(i+1)*recRes, 3)
+    camera.annotate_text = "{0}, Elapsed: {1}".format(dt.now().strftime("%Y-%m-%d %H:%M:%S"), timeElapS)
+    sleep(recRes)
+camera.wait_recording(1)
 camera.stop_recording()
 shutil.copy(srcroot, dstroot)
 print(convCommand)
@@ -49,5 +54,11 @@ p = subprocess.Popen("ls", shell=True,
 p_status = p.wait()
 for line in iter(p.stdout.readline, b''):
     print (line)
-print ("*** conv exit status/return code: ", conv_status)
+if conv_status==0:
+    print ("*** Conversion complete ***")
+else:
+    print("**! Conversion FAILED !**")
 camera.stop_preview()
+camera.close()
+#
+#
