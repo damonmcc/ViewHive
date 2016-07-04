@@ -32,11 +32,17 @@ recRes = 0.01 # resolution of elapsed time counter
 recPeriod = 3 # Seconds to record
 
 camera.start_preview(alpha=200)
+print('*** Active on %s***' % timestamp)
+if (os.path.exists(dstroot)==False):
+    print("**! No USB Stoarge named BEEHIVE !**")
+    quit()
+
 camera.start_recording(srcroot, format='h264')
 for i in range(recPeriod*int((1/recRes))):
     timeElapS = "%.2f" % round(float(i+1)*recRes, 3)
     camera.annotate_text = "{0}, Elapsed: {1}".format(dt.now().strftime("%Y-%m-%d %H:%M:%S"), timeElapS)
     sleep(recRes)
+camera.annotate_text = "{0}, DONE".format(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
 camera.wait_recording(1)
 camera.stop_recording()
 shutil.copy(srcroot, dstroot)
@@ -60,5 +66,8 @@ else:
     print("**! Conversion FAILED !**")
 camera.stop_preview()
 camera.close()
+
+os.system("sudo cp -v ./HVScript0.wpi ~/wittyPi/schedule.wpi")
+quit()
 #
 #
