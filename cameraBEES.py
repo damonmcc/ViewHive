@@ -12,6 +12,8 @@ def silentremove(filename):
     except OSError as e:
         if e.errno != errno.ENOENT: # no such file or directory
             raise # re-raise exception if a different error occured
+#def now()
+#
 #def savetoUSB(drivename):
 #    try:
         
@@ -28,13 +30,22 @@ timestamp = dt.now().strftime("%Y-%m-%d_%H.%M.%S")
 srcfile = '%s.h264' % timestamp
 convCommand = 'MP4Box -add {0}.h264 {1}.mp4'.format(timestamp,timestamp)
 srcroot = '/home/pi/Videos/%s' % srcfile
+recRes = 0.01 # resolution of elapsed time counter (seconds)
+#####
+#
+#
+recPeriod = 3 # Seconds to record
+
 dstroot = '/media/pi/BEEVIDS/'
 codetroot = '/home/pi/Documents/Python 3 Projects/Bee Camera'
-recRes = 0.01 # resolution of elapsed time counter (seconds)
-recPeriod = 3 # Seconds to record
+
+#
+#
+#####
+
+
+
 camera.start_preview(alpha=200)
-
-
 # First copy custom schedule to wittyPi folders
 print('*** Active on %s***\n' % timestamp)
 os.system("sudo cp -v ./HVScript0.wpi /home//wittyPi/schedules/HVScript0.wpi")
@@ -44,6 +55,7 @@ if (os.path.exists(dstroot)==False):
     quit()
 
 camera.start_recording(srcroot, format='h264')
+camera.led = True
 for i in range(recPeriod*int((1/recRes))):
     timeElapS = "%.2f" % round(float(i+1)*recRes, 3)
     camera.annotate_text = "{0}, Elapsed: {1}".format(dt.now().strftime("%Y-%m-%d %H:%M:%S"), timeElapS)
