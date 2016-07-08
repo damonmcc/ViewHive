@@ -35,8 +35,8 @@ srcroot = '/home/pi/Videos/%s' % srcfile
 recRes = 0.01 # resolution of elapsed time counter (seconds)
 #####
 #
-# 
-recPeriod = 3 # Seconds to record
+# 3600 seconds per hour
+recPeriod = 120 # Seconds to record
 
 dstroot = '/media/pi/BEEVIDS/'
 codetroot = '/home/pi/Documents/Python 3 Projects/Bee Camera'

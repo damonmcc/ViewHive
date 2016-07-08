@@ -8,7 +8,12 @@
 
 BEGIN	2015-08-01 05:22:00
 END	2025-07-31 23:59:59
-ON	H3	# keep ON for 3 hours (until 8:22
-OFF	H11 M44	# keep OFF state (until 20:06)
+ON	H3	# keep ON for 3 hours (until 8:22)
+OFF	H11 M34	# keep OFF state (11:44 until 20:06)
+
+# in case turned on during the OFF period
+ON	M5	# Turn on, realize it isn't time to record, wait for shutdown
+OFF	M5	# Test to prevent next startup from being skipped
+
 ON	H3	# keep ON (until 23:06)
-OFF	H6 M16	# keep OFF (until 5:22 next day) 
+OFF	H6 M16	# keep OFF (06:16 until 5:22 next day) 
