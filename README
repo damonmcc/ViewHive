@@ -7,13 +7,14 @@ Uses:
 Raspberry Pi (Debian)
 Python 3
 WittyPi
+MP4Bbox
 (LIRC next)
 
 
 Issues
-Cron doesn't run after wittyPi scheduled startup
-WittyPi doesn't keep time after an interuption and shutdown
-Camera script may create a duplicate BEEVIDS folder which would have to be removed
+Cron doesn't run after wittyPi scheduled startup (using a bash script in /boot instead)
+WittyPi doesn't keep time after an interuption and shutdown (testing alternative schedule.wpi formats)
+Camera script may create a duplicate BEEVIDS folder which would have to be removed (delaying write function for now)
 
 
 CRONTAB script (not in use due to wittyPi)

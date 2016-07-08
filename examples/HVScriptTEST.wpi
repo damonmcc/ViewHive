@@ -1,0 +1,16 @@
+# HiveView custom schedule
+# v0.3
+# Turn on every 10 minutes
+
+BEGIN	2015-08-01 00:00:00
+END	2025-07-31 23:59:59
+ON	M1	WAIT # keep ON state until external shutdown
+OFF	M9	# keep OFF state for 9 minutes
+
+
+# This script doesn't schedule the shutdown, which is supposed to be done externally.
+# You can shutdown your Raspberry Pi with your program just after finishing the job.
+#
+# [Tips]
+# Although the ON state is marked as 1 minute, its actual duration may vary.
+# The OFF state will end exactly 10 minutes after your RPi gets turned on.

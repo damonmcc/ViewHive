@@ -4,6 +4,8 @@ from datetime import datetime as dt
 import subprocess
 import shutil
 import sys
+
+import lirc
 import os, errno
 def silentremove(filename):
     try:
@@ -33,7 +35,7 @@ srcroot = '/home/pi/Videos/%s' % srcfile
 recRes = 0.01 # resolution of elapsed time counter (seconds)
 #####
 #
-#
+# 
 recPeriod = 3 # Seconds to record
 
 dstroot = '/media/pi/BEEVIDS/'
@@ -48,7 +50,7 @@ codetroot = '/home/pi/Documents/Python 3 Projects/Bee Camera'
 camera.start_preview(alpha=200)
 # First copy custom schedule to wittyPi folders
 print('*** Active on %s***\n' % timestamp)
-os.system("sudo cp -v ./HVScript0.wpi /home//wittyPi/schedules/HVScript0.wpi")
+os.system("sudo cp -v ./HVScript0.wpi /home//wittyPi/schedules/HVScriptIMPORT.wpi")
 os.system("sudo cp -v ./HVScript0.wpi /home/wittyPi/schedule.wpi")
 if (os.path.exists(dstroot)==False):
     print("**! No USB Stoarge named BEEVIDS !**")
@@ -85,6 +87,6 @@ else:
 camera.stop_preview()
 camera.close()
 
-quit()
+
 #
 #

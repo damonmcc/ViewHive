@@ -1,16 +1,14 @@
 # HiveView custom schedule
-# v0.3
-# Turn on every 10 minutes
+# v0.4
+# Realistic test to validate WittyPi
+# Turn on 30 minutes before sunrise and sunset everyday
+#	05:52, 20:36 (05:22, 20:06) for VA on 7/8/2016
+# Stay on for 3 hours
+# Recording is set for 2 hours
 
-BEGIN	2015-08-01 00:00:00
+BEGIN	2015-08-01 05:22:00
 END	2025-07-31 23:59:59
-ON	M1	WAIT # keep ON state until external shutdown
-OFF	M9	# keep OFF state for 29 minutes
-
-
-# This script doesn't schedule the shutdown, which is supposed to be done externally.
-# You can shutdown your Raspberry Pi with your program just after finishing the job.
-#
-# [Tips]
-# Although the ON state is marked as 1 minute, its actual duration may vary.
-# The OFF state will end exactly 10 minutes after your RPi gets turned on.
+ON	H3	# keep ON for 3 hours (until 8:22
+OFF	H11 M44	# keep OFF state (until 20:06)
+ON	H3	# keep ON (until 23:06)
+OFF	H6 M16	# keep OFF (until 5:22 next day) 
