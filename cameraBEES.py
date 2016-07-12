@@ -36,7 +36,7 @@ recRes = 0.01 # resolution of elapsed time counter (seconds)
 #####
 #
 # 3600 seconds per hour
-recPeriod = 120 # Seconds to record
+recPeriod = 10 # Seconds to record
 
 dstroot = '/media/pi/BEEVIDS/'
 codetroot = '/home/pi/Documents/Python 3 Projects/Bee Camera'
@@ -52,6 +52,9 @@ camera.start_preview(alpha=200)
 print('*** Active on %s***\n' % timestamp)
 os.system("sudo cp -v ./HVScript0.wpi /home//wittyPi/schedules/HVScriptIMPORT.wpi")
 os.system("sudo cp -v ./HVScript0.wpi /home/wittyPi/schedule.wpi")
+# Set wittyPi schedule with its runScript.sh
+print(subprocess.check_output(["sudo", "/home/wittyPi/runScript.sh"],
+                              universal_newlines = True))
 if (os.path.exists(dstroot)==False):
     print("**! No USB Stoarge named BEEVIDS !**")
     quit()
@@ -70,23 +73,22 @@ print(convCommand)
 conv = subprocess.Popen(convCommand, shell=True,
                     cwd=dstroot)
 conv_status = conv.wait()
-#for line in iter(conv.stdout.readline, b''):
-#    print (line)
+if conv_status==0:
+    print ("*** Conversion complete ***")
+else:
+    print ("**! Conversion FAILED !**")
+
+
 silentremove(srcroot)
 silentremove("{0}{1}.h264".format(dstroot,timestamp))
+print("{0} contains:".format(dstroot))
 p = subprocess.Popen("ls", shell=True,
                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                      cwd=dstroot)
 p_status = p.wait()
 for line in iter(p.stdout.readline, b''):
     print (line)
-if conv_status==0:
-    print ("*** Conversion complete ***")
-else:
-    print ("**! Conversion FAILED !**")
 camera.stop_preview()
 camera.close()
-
-
 #
 #
