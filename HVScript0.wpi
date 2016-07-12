@@ -1,23 +1,13 @@
 # HiveView custom schedule
-# v0.5
+# v0.6
 # Realistic test to validate WittyPi
 # Turn on 30 minutes before sunrise and sunset everyday
 #	05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016
-# Stay on for 3 hours
-# Recording is set for 2 hours
+# Stay on for 20 minutes every hour
+# Recording is set for 10 seconds
 
-BEGIN	2015-08-01 05:12:00
+BEGIN	2015-08-01 05:00:00
 END	2025-07-31 23:59:59
-# in case turned on during the OFF period
-ON	M5	# Turn on, realize it isn't time to record, wait for shutdown
-OFF	M5	# Test to prevent next startup from being skipped
-
-ON	H3	# keep ON at 5:22 (until 8:22)
-OFF	H11 M34	# keep OFF state (11:44 until 20:06)
-
-# in case turned on during the OFF period
-ON	M5	# Turn on, realize it isn't time to record, wait for shutdown
-OFF	M5	# Test to prevent next startup from being skipped
-
-ON	H3	# keep ON at 20:06 (until 23:06)
-OFF	H6 M06	# keep OFF (06:16 until 5:22 next day)
+OFF	M20
+ON	M20	# keep ON 
+OFF	M20	# keep OFF state (11:44 until 20:06)

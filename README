@@ -1,22 +1,12 @@
-Bee Camera v0.5.3 README
+Bee Camera v0.5.4 README
 ==========
 
 Python script to record video on a Raspberry Pi and save to external USB storage as an mp4. Recording begins at startup. Time setting and recording settings will soon be set by IR remote.
+
 
 Uses:
 Raspberry Pi (Debian)
 Python 3
 WittyPi
 MP4Bbox
-(LIRC next)
-
-
-Issues
-Cron doesn't run after wittyPi scheduled startup (using a bash script in /boot instead)
-WittyPi doesn't keep time after an interuption and shutdown (testing alternative schedule.wpi formats)
-Camera script may create a duplicate BEEVIDS folder which would have to be removed (delaying write function for now)
-
-
-CRONTAB script (not in use due to wittyPi)
-@reboot ifdown wlan0
-@reboot sh /home/pi/Documents/Python\ 3\ Projects/Bee\ Camera/launcher.sh >/home/pi/Documents/Python\ 3\ Projects/Bee\ Camera/logs/cronlog 2>&1
+LIRC
