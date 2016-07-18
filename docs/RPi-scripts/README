@@ -1,0 +1,12 @@
+ViewHive v0.6 README
+==========
+
+Python script to record video on a Raspberry Pi and save to external USB storage as an mp4. Recording begins at startup. Time setting and recording settings will soon be set by IR remote.
+
+
+Uses:
+Raspberry Pi (Debian)
+Python 3
+WittyPi
+MP4Bbox
+LIRC
