@@ -28,8 +28,11 @@ def synchSchedule():
 def waitforUSB(drivename):
     while os.path.exists(drivename) == False:
           print("Waiting for %s USB..." % drivename)
+          wait(3)
     print("%s detected..."% drivename)
-        
+    timestamp = now()
+
+    
 camera = PiCamera()
 camera.rotation = 180
 camera.resolution = (1920, 1080)
@@ -40,9 +43,6 @@ camera.annotate_background = Color('grey')
 camera.annotate_foreground = Color('purple')
 sleep(3)
 timestamp = now()
-srcfile = '%s.h264' % timestamp
-convCommand = 'MP4Box -add {0}.h264 {1}.mp4'.format(timestamp,timestamp)
-srcroot = '/home/pi/Videos/%s' % srcfile
 recRes = 0.01 # resolution of elapsed time counter (seconds)
 #####
 #
@@ -51,7 +51,6 @@ recPeriod = 10 # Seconds to record
 
 dstroot = '/media/pi/BEEVIDS/'
 codetroot = '/home/pi/Documents/Python 3 Projects/Bee Camera'
-
 #
 #
 #####
@@ -63,6 +62,11 @@ camera.start_preview(alpha=200)
 print('*** Active on %s***\n' % timestamp)
 synchSchedule()
 waitforUSB(dstroot)
+
+srcfile = '%s.h264' % timestamp
+srcroot = '/home/pi/Videos/%s' % srcfile
+convCommand = 'MP4Box -add {0}.h264 {1}.mp4'.format(timestamp,timestamp)
+
 
 camera.start_recording(srcroot, format='h264')
 camera.led = True

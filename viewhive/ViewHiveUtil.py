@@ -1,13 +1,24 @@
 from sortedcontainers import SortedDict
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
+import time
+import Adafruit_SSD1306
+import Adafruit_GPIO.SPI as SPI 
+
+#def recordNow():
+    #
 
 class Schedule(object):
 
-    def __init__(self, source):
+    def __init__(self, name, source):
+        self.name = name
         self.source = source            # Source file
         self.file = open(source)
         self.content = self.file.read() # Intermediary data for read/write
         self.file.close()
         self.events = []                # List of schedule events
+        self.ED = SortedDict(self.events)
         
     #   Display Schedule source file data
     def showSource(self):
@@ -25,7 +36,10 @@ class Schedule(object):
     def showEvents(self):
         print("All events:")
         for event in self.events:
-            print("From %04d to %04d" % (event['start'], event['end']))
+            print("From %04d to %04d" % (event['start'], (event['start']+event['length'])))
+        print("\nSorted:")
+        for event in self.ED:
+            print("From %s to %s" % (event[0], (event[0]+event[1])))
         print("\n")
 
     #   Convert an events list to Witty Pi schedule text
@@ -85,7 +99,7 @@ class Schedule(object):
 
         
         for event in self.events:   # For each event in the list...
-            print("Event %d: %04d to %04d" % (i, event['start'], event['end']))
+            print("Event %d: %04d to %04d" % (i, event['start'], (event['start']+event['length'])))
             if(i==0 and len(self.events)>1):   # First event
                 print("First event ..."),
                 if(event['start']>0):   # If starting after midnight, add morning buffer
@@ -118,6 +132,7 @@ class Schedule(object):
         #   Combine all command stings into contents
         self.content = '\n'.join(wpiCommands)
         self.showContent()
+
         
         
     #   Convert Witty Pi schedule text to an events list
@@ -170,8 +185,9 @@ class Schedule(object):
                     comment = curCommand[len(curCommand)-1].split('#')
                     tempEvent['length'] = time(comment[1])-1
 ##                    print("Length is %d"%tempEvent['length']),
-                    tempEvent['end'] = tempEvent['start']+tempEvent['length']
+##                    tempEvent['end'] = tempEvent['start']+time(comment[1])-1
                     self.events.append(tempEvent)
+                    self.ED = SortedDict(self.events)
                     self.showEvents()
                     tempEvent = self.clearEvent()
                     i+=1
@@ -195,13 +211,12 @@ class Schedule(object):
         print("Adding an event ... "),
         # Create an empty new event
         newEvent = {'start' : 0000,
-                  'length' : 0000,
-                  'end' : 0000}
+                  'length' : 0000}
         while True:
             try:
                 newEvent['start'] = int(input("Enter start time (0000)> "))
                 newEvent['length'] = int(input("Enter rec. length (0000)> "))
-                newEvent['end'] = newEvent['start'] + newEvent['length']
+##                newEvent['end'] = newEvent['start'] + newEvent['length']
                 assert (newEvent['start'] < 2400) or (newEvent['length'] < 2400), "Entered a start%d/length%d greater than 2400!"% (newEvent['start'], newEvent['start'])
                 assert newEvent['length'] != 0, "Entered 0000 for length!"
                 break
@@ -213,10 +228,10 @@ class Schedule(object):
         
         
         # Confirm before saving
-        print("End time: %04d\nSave this event?" % newEvent['end']),
+        print("End time: %04d\nSave this event?" % (newEvent['start']+newEvent['length'])),
         if(self.confirmed()):  # Pressed ENTER
             self.events.append(newEvent)
-            self.events = SortedDict(self.events)
+            self.ED = SortedDict(self.events)
             print("New event added! There are %d events:" % len(self.events))
             self.showEvents()
         else:   # Pressed anything else
@@ -234,8 +249,7 @@ class Schedule(object):
     #   Clear an event object's time attributes to 0000
     def clearEvent(self):
         blankEvent = {'start' : 0000,
-                 'length' : 0000,
-                 'end' : 0000}
+                 'length' : 0000}
         return blankEvent
 
     #   Ask user to confirm a task and return result
@@ -245,8 +259,8 @@ class Schedule(object):
         else:
             print("CANCELED")
             return False
-        
-    # def sync():
+
+    def sync():
         # sync object with schedule file
         # truncate
         # write header comments
@@ -256,18 +270,142 @@ class Schedule(object):
         self.file.write(self.content)
         print("File appended")
         self.file.close()
+
+
+
+
+
+class Display(object):
+    def __init__(self):
+        RST = 24
+        DC = 23
+        SPI_PORT = 0
+        SPI_DEVICE = 0
+        self.disp = Adafruit_SSD1306.SSD1306_128_32(rst=RST, dc=DC, spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=8000000))
+        self.width = self.disp.width
+        self.height = self.disp.height
+        self.font = ImageFont.truetype("GameCube.ttf", 7)
+        self.disp.begin()
+        self.image = Image.new('1', (self.width, self.height))
+        self.draw = ImageDraw.Draw(self.image)
+        self.draw.rectangle((0,0,self.width,self.height), outline=0, fill=0)
+
+    def update(self):
+        self.disp.clear()
+        self.disp.image(self.image)
+        self.disp.display()
+
+    def clear(self):
+        # Clear image buffer by drawing a black filled box.
+        self.draw.rectangle((0,0,self.width,self.height), outline=0, fill=0)
+
+    def welcome(self):
+        # Load default font.
+        font = ImageFont.truetype("electroharmonix.ttf", 12)
+        self.draw.text((2, 2),    'Hello',  font=self.font, fill=255)
+        self.draw.text((2, 15), 'ViewHive v0.6!', font=self.font, fill=255)
+        self.update()
+        time.sleep(3)
+
+    def eventsBar(self, events):
+        i=0     #   1440 minutes in a day
+        while(i<=1440):
+            x = (128*(i/1400))
+            if(i%720 == 0):
+                self.draw.line(((x,26) , (x,self.height)), fill=1)
+            elif(i%180 == 0):
+                self.draw.line(((x,28), (x,self.height)), fill=1)            
+            elif(i%60 == 0):
+                self.draw.line(((x,30) , (x,self.height)), fill=1)
+            else:
+                self.draw.line(((x,31), (x,self.height)), fill=1)
+            i+=30
+        for ev in events:
+            s = 128*(ev['start']/2400)
+            e = (128*((ev['start']+ev['length'])/2400))
+            self.draw.chord((s,28 , e,self.height),
+                            -90,0, outline=1, fill=1)
+
+    def tabs(self, mode):
+        length = 40
+        off = 6
+        buf = 8
+        h = 10
+        if(mode == 0):
+            self.draw.polygon([(buf,0), (buf+length,0), (buf+length-off/2,h) , (buf+off/2,h)],
+                              outline=0, fill=1)
+            self.draw.text((10+off/2, 0), 'VIEW',  font=self.font, fill=0)
+
+            self.draw.polygon([(buf+length,0), (buf+(length*2)-off,0), (buf+(length*2)+off/2,h) , (buf+length-5,h)],
+                              outline=255, fill=0)
+            self.draw.text((buf+length+5, 0), 'ADD',  font=self.font, fill=255)
         
+            self.draw.polygon([(buf+(length*2-off),0), (buf+length*3-off,0), (buf+length*3-off-off/2,h) , (buf+length*2-off/2,h)],
+                              outline=255, fill=0)
+            self.draw.text((buf+length*2+5, 0), 'DEL',  font=self.font, fill=255)
+
+        if(mode == 1):
+            self.draw.polygon([(buf,0), (buf+length,0), (buf+length-off/2,h) , (buf+off/2,h)],
+                              outline=1, fill=0)
+            self.draw.text((10+off/2, 0), 'VIEW',  font=self.font, fill=1)
+
+            self.draw.polygon([(buf+length,0), (buf+(length*2)-off,0), (buf+(length*2)+off/2,h) , (buf+length-off/2,h)],
+                              outline=0, fill=1)
+            self.draw.text((buf+length+5, 0), 'ADD',  font=self.font, fill=0)
+        
+            self.draw.polygon([(buf+(length*2-+off),0), (buf+length*3-off,0), (buf+length*3-off-off/2,h) , (buf+length*2-off/2,h)],
+                              outline=1, fill=0)
+            self.draw.text((buf+length*2+5, 0), 'DEL',  font=self.font, fill=1)
+
+        if(mode == 2):
+            self.draw.polygon([(buf,0), (buf+length,0), (buf+length-off/2,h) , (buf+off/2,h)],
+                              outline=1, fill=0)
+            self.draw.text((10+off/2, 0), 'VIEW',  font=self.font, fill=1)
+
+            self.draw.polygon([(buf+length,0), (buf+(length*2)-off,0), (buf+(length*2)+off/2,h) , (buf+length-off/2,h)],
+                              outline=1, fill=0)
+            self.draw.text((buf+length+5, 0), 'ADD',  font=self.font, fill=1)
+        
+            self.draw.polygon([(buf+(length*2-off),0), (buf+length*3-off,0), (buf+length*3-off-off/2,h) , (buf+length*2-off/2,h)],
+                              outline=0, fill=1)
+            self.draw.text((buf+length*2+5, 0), 'DEL',  font=self.font, fill=0)
 
 
-schedule_cur = Schedule("HVScriptUTIL.wpi")
-schedule_cur.showContent()
-schedule_cur.WpiToEvents()
-schedule_cur.EventsToWpi()
+    def roomMain(self):
+        #
+        self.draw.text((1,self.height/2), 'MAIN main', font=self.font, fill=1)
+    
+    def roomView(self, events):
+        #
+        vel = -2
+        pos = 0
+        i = 0
+        evString = ''
+        for ev in events:
+            evString = evString+'%d-%d '%(ev['start'],ev['start']+ev['length'])
+        self.draw.text((1,self.height/2), evString,
+                           font=self.font, fill=1)
+            
+    
 
-while True:
-    schedule_cur.addEvent()
-    schedule_cur.EventsToWpi()
-    schedule_cur.clearAllEvents()
-    schedule_cur.addEvent()
-    schedule_cur.showContent()
+    def roomAdd(self, schedule):
+        #
+        self.draw.text((1, self.height/2), 'ADDING', font=self.font, fill=1)
+##
+##    def roomDel():
+##        #
+
+##
+##
+##schedule_cur = Schedule("HVScriptUTIL.wpi")
+##schedule_cur.showContent()
+##schedule_cur.WpiToEvents()
+##schedule_cur.EventsToWpi()
+##
+##while True:
+##    schedule_cur.addEvent()
+##    schedule_cur.EventsToWpi()
+##    schedule_cur.clearAllEvents()
+##    schedule_cur.addEvent()
+##    schedule_cur.showContent()
 
