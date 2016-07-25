@@ -3,11 +3,28 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 import time
+import threading
 import Adafruit_SSD1306
 import Adafruit_GPIO.SPI as SPI 
 
 #def recordNow():
     #
+
+def code1440(time):
+    # Convert a 2400 time to 1440 time
+    if(len(time) == 4):
+        tRaw = (int(time[0])*600+int(time[1])*60)+int(time[2])+int(time[3])
+    elif(len(time) == 3):
+        tRaw = (int(time[0])*60)+int(time[1])+int(time[2])
+    elif(len(time) == 2):
+        tRaw = int(time[0])+int(time[1])
+    else:
+        tRaw = int(time[0])
+    return tRaw
+def code2400(time):
+    # Convert a 1400 time to 2400
+    pass
+    
 
 class Schedule(object):
 
@@ -172,7 +189,7 @@ class Schedule(object):
         i+=1
         curTime = 0
 
-        ##  While reading commands
+        ##  While reading WPI command lines
         while i < len(wpiLines):
             curCommand = wpiLines[i].split('\t')
             print(i," ", curCommand),
@@ -183,6 +200,7 @@ class Schedule(object):
                 if('#' in curCommand[len(curCommand)-1]):
                     curTime+= time(curCommand[1])
                     comment = curCommand[len(curCommand)-1].split('#')
+                    
                     tempEvent['length'] = time(comment[1])-1
 ##                    print("Length is %d"%tempEvent['length']),
 ##                    tempEvent['end'] = tempEvent['start']+time(comment[1])-1
@@ -285,10 +303,19 @@ class Display(object):
         self.width = self.disp.width
         self.height = self.disp.height
         self.font = ImageFont.truetype("GameCube.ttf", 7)
+        self.mode = -1
         self.disp.begin()
         self.image = Image.new('1', (self.width, self.height))
         self.draw = ImageDraw.Draw(self.image)
         self.draw.rectangle((0,0,self.width,self.height), outline=0, fill=0)
+
+    class AwaitCommand(threading.Thread):
+        def run(self):
+            print("Awaiting command")
+            c = input()
+            if(c == '1'):
+                print(c)
+                self.mode = 1
 
     def update(self):
         self.disp.clear()
@@ -298,6 +325,8 @@ class Display(object):
     def clear(self):
         # Clear image buffer by drawing a black filled box.
         self.draw.rectangle((0,0,self.width,self.height), outline=0, fill=0)
+
+
 
     def welcome(self):
         # Load default font.
@@ -321,17 +350,21 @@ class Display(object):
                 self.draw.line(((x,31), (x,self.height)), fill=1)
             i+=30
         for ev in events:
-            s = 128*(ev['start']/2400)
-            e = (128*((ev['start']+ev['length'])/2400))
-            self.draw.chord((s,28 , e,self.height),
-                            -90,0, outline=1, fill=1)
+            start = code1440(str(ev['start']))
+            length = code1440(str(ev['length']))
+            
+            s = 128*(start/1440)
+            e = (128*((start+length)/1440))
+            self.draw.chord((s,28 , e,self.height), -180,0, outline=1, fill=1)
+##            self.draw.line(((s, 20) , (s,32)), fill=1)
+            
 
-    def tabs(self, mode):
+    def tabs(self):
         length = 40
         off = 6
         buf = 8
         h = 10
-        if(mode == 0):
+        if(self.mode == 0):
             self.draw.polygon([(buf,0), (buf+length,0), (buf+length-off/2,h) , (buf+off/2,h)],
                               outline=0, fill=1)
             self.draw.text((10+off/2, 0), 'VIEW',  font=self.font, fill=0)
@@ -344,7 +377,7 @@ class Display(object):
                               outline=255, fill=0)
             self.draw.text((buf+length*2+5, 0), 'DEL',  font=self.font, fill=255)
 
-        if(mode == 1):
+        elif(self.mode == 1):
             self.draw.polygon([(buf,0), (buf+length,0), (buf+length-off/2,h) , (buf+off/2,h)],
                               outline=1, fill=0)
             self.draw.text((10+off/2, 0), 'VIEW',  font=self.font, fill=1)
@@ -357,7 +390,7 @@ class Display(object):
                               outline=1, fill=0)
             self.draw.text((buf+length*2+5, 0), 'DEL',  font=self.font, fill=1)
 
-        if(mode == 2):
+        elif(self.mode == 2):
             self.draw.polygon([(buf,0), (buf+length,0), (buf+length-off/2,h) , (buf+off/2,h)],
                               outline=1, fill=0)
             self.draw.text((10+off/2, 0), 'VIEW',  font=self.font, fill=1)
@@ -369,6 +402,10 @@ class Display(object):
             self.draw.polygon([(buf+(length*2-off),0), (buf+length*3-off,0), (buf+length*3-off-off/2,h) , (buf+length*2-off/2,h)],
                               outline=0, fill=1)
             self.draw.text((buf+length*2+5, 0), 'DEL',  font=self.font, fill=0)
+        else:
+            self.draw.polygon([(buf,0), (self.width-buf,0), (self.width-buf-off/2,h) , (buf+off/2,h)],
+                              outline=0, fill=1)
+            self.draw.text((self.width/2-25, 0), 'VIEWHIVE',  font=self.font, fill=0)
 
 
     def roomMain(self):
@@ -376,24 +413,66 @@ class Display(object):
         self.draw.text((1,self.height/2), 'MAIN main', font=self.font, fill=1)
     
     def roomView(self, events):
-        #
-        vel = -2
-        pos = 0
+        # Generate scrolling event time display
+        velocity = -0.5
+        startpos = self.width-10
+        pos = startpos
         i = 0
         evString = ''
+        font = self.font = ImageFont.truetype("GameCube.ttf", 7)
         for ev in events:
-            evString = evString+'%d-%d '%(ev['start'],ev['start']+ev['length'])
-        self.draw.text((1,self.height/2), evString,
-                           font=self.font, fill=1)
+            evString = evString+'%d'%(ev['start'])+'for'+'%d/ '%ev['length']
+        maxwidth, unused = self.draw.textsize(evString, font=font)
+        AC = self.AwaitCommand()
+        AC.start()
+        
+        while (self.mode == 0): # Until view mode changes
+            # Clear image buffer by drawing a black filled box.
+            self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+            # Enumerate characters and draw them offset vertically based on a sine wave.
+            x = pos
+            for i, c in enumerate(evString):
+                # Stop drawing if off the right side of screen.
+                if x > self.width:
+                    break
+                # Calculate width but skip drawing if off the left side of screen.
+                if x < -10:
+                    char_width, char_height = self.draw.textsize(c, font=font)
+                    x += char_width
+                    continue
+                # Calculate offset from screen size.
+                y = self.height/2
+                # Draw text.
+                self.draw.text((x, y), c, font=self.font, fill=1)
+                # Increment x position based on chacacter width.
+                char_width, char_height = self.draw.textsize(c, font=font)
+                x += char_width
+            # Draw the image buffer.
+            self.disp.image(self.image)
+            self.disp.display()
+            # Move position for next frame.
+            pos += velocity
+            # Start over if text has scrolled completely off left side of screen.
+            if pos < -maxwidth:
+                pos = startpos
+            # Pause briefly before drawing next frame.
+            time.sleep(0.1)
+
             
     
 
     def roomAdd(self, schedule):
         #
         self.draw.text((1, self.height/2), 'ADDING', font=self.font, fill=1)
+
+  
 ##
 ##    def roomDel():
 ##        #
+
+
+
+        
 
 ##
 ##
