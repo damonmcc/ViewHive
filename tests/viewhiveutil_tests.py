@@ -3,13 +3,13 @@ from viewhive.ViewHiveUtil import *
 
 
 def test_schedule():
-    bees = Schedule("Bees", "HVScriptUTIL.wpi")
+    bees = Schedule("Bees", "ScriptUTIL.wpi")
     assert_equal(bees.name, "Bees")
-    assert_equal(bees.file.name, "HVScriptUTIL.wpi")
+    assert_equal(bees.file.name, "ScriptUTIL.wpi")
     assert_equal(bees.events, [])
     
 def test_schedule_read():
-    old = Schedule("Old", "HVScriptUTIL.wpi")
+    old = Schedule("Old", "ScriptUTIL.wpi")
     old.WpiToEvents()
     assert_equal(old.events[0]['start'], 200)
     old.showEvents()
@@ -19,7 +19,7 @@ def test_display():
     display.welcome()
 
 def test_events():
-    bees = Schedule("Bees", "HVScriptUTIL.wpi")
+    bees = Schedule("Bees", "ScriptUTIL.wpi")
     bees.WpiToEvents()
     display = Display()
     display.eventsBar(bees.events)
@@ -28,38 +28,38 @@ def test_events():
 
 def test_tabs():
     display = Display()
-    bees = Schedule("Bees", "HVScriptUTIL.wpi")
+    bees = Schedule("Bees", "ScriptUTIL.wpi")
     bees.WpiToEvents()
     display.eventsBar(bees.events)
-    display.mode = 0
+    display.mode = 'VIEW'
     display.tabs()
     display.update()
     time.sleep(0.5)
     
     display.clear()
-    display.mode = 1
+    display.mode = 'ADD'
     display.tabs()
     display.update()
     time.sleep(0.5)
 
     display.clear()
-    display.mode = 2
+    display.mode = 'DEL'
     display.tabs()
     display.update()
     time.sleep(1)
 
 def test_rooms():
     display = Display()
-    display.mode = 6
+    display.mode = 'BLAH'
     display.tabs()
     display.roomMain()
     display.update()
     time.sleep(2)
     
-    bees = Schedule("Bees", "HVScriptUTIL.wpi")
+    bees = Schedule("Bees", "ScriptUTIL.wpi")
     bees.WpiToEvents()
     display.clear()
-    display.mode = 0
+    display.mode = 'VIEW'
     display.tabs()
     display.eventsBar(bees.events)
     display.roomView(bees.events)
@@ -67,9 +67,8 @@ def test_rooms():
     time.sleep(2)
 
     display.clear()
-    display.mode = 1
+    display.mode = 'TIME'
     display.tabs()
-    display.roomAdd(bees)
     display.update()
     
     

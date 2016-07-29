@@ -4,6 +4,7 @@ from PIL import ImageDraw
 from PIL import ImageFont
 import time
 import threading
+import curses
 import Adafruit_SSD1306
 import Adafruit_GPIO.SPI as SPI 
 
@@ -24,6 +25,18 @@ def code1440(time):
 def code2400(time):
     # Convert a 1400 time to 2400
     pass
+
+
+screen = curses.initscr()
+curses.echo()
+curses.curs_set(0)
+screen.keypad(1)
+def room(screen):
+    screen.addstr("Thisssss\n\n")
+    while True:
+        event = screen.getch()
+        if event == ord("q"): break
+    screen.addstr(5, 1,"OUT\n\n")
     
 
 class Schedule(object):
@@ -270,6 +283,9 @@ class Schedule(object):
                  'length' : 0000}
         return blankEvent
 
+
+   
+
     #   Ask user to confirm a task and return result
     def confirmed(self):
         if(input("Confirm with ENTER? >")==''):
@@ -302,20 +318,32 @@ class Display(object):
         self.disp = Adafruit_SSD1306.SSD1306_128_32(rst=RST, dc=DC, spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=8000000))
         self.width = self.disp.width
         self.height = self.disp.height
-        self.font = ImageFont.truetype("GameCube.ttf", 7)
+        self.font = ImageFont.truetype("GameCube.ttf", 7)       
+        
         self.mode = -1
         self.disp.begin()
         self.image = Image.new('1', (self.width, self.height))
         self.draw = ImageDraw.Draw(self.image)
         self.draw.rectangle((0,0,self.width,self.height), outline=0, fill=0)
 
-    class AwaitCommand(threading.Thread):
-        def run(self):
-            print("Awaiting command")
-            c = input()
-            if(c == '1'):
-                print(c)
-                self.mode = 1
+
+    #   Get user-input time string
+    def getTime(self):
+        event = 28
+        curses.wrapper(room)
+        curses.wrapper(room)
+
+        return str(event)
+
+
+##
+##    class AwaitCommand(threading.Thread):
+##        def run(self):
+##            print("Awaiting command")
+##            c = input()
+##            if(c == '1'):
+##                print(c)
+##                self.mode = 1
 
     def update(self):
         self.disp.clear()
@@ -364,7 +392,7 @@ class Display(object):
         off = 6
         buf = 8
         h = 10
-        if(self.mode == 0):
+        if(self.mode == 'VIEW'):
             self.draw.polygon([(buf,0), (buf+length,0), (buf+length-off/2,h) , (buf+off/2,h)],
                               outline=0, fill=1)
             self.draw.text((10+off/2, 0), 'VIEW',  font=self.font, fill=0)
@@ -377,7 +405,7 @@ class Display(object):
                               outline=255, fill=0)
             self.draw.text((buf+length*2+5, 0), 'DEL',  font=self.font, fill=255)
 
-        elif(self.mode == 1):
+        elif(self.mode == 'ADD'):
             self.draw.polygon([(buf,0), (buf+length,0), (buf+length-off/2,h) , (buf+off/2,h)],
                               outline=1, fill=0)
             self.draw.text((10+off/2, 0), 'VIEW',  font=self.font, fill=1)
@@ -390,7 +418,7 @@ class Display(object):
                               outline=1, fill=0)
             self.draw.text((buf+length*2+5, 0), 'DEL',  font=self.font, fill=1)
 
-        elif(self.mode == 2):
+        elif(self.mode == 'DEL'):
             self.draw.polygon([(buf,0), (buf+length,0), (buf+length-off/2,h) , (buf+off/2,h)],
                               outline=1, fill=0)
             self.draw.text((10+off/2, 0), 'VIEW',  font=self.font, fill=1)
@@ -402,6 +430,13 @@ class Display(object):
             self.draw.polygon([(buf+(length*2-off),0), (buf+length*3-off,0), (buf+length*3-off-off/2,h) , (buf+length*2-off/2,h)],
                               outline=0, fill=1)
             self.draw.text((buf+length*2+5, 0), 'DEL',  font=self.font, fill=0)
+
+        elif(self.mode == 'TIME'):
+            self.draw.polygon([(buf,0), (self.width-buf,0), (self.width-buf-off/2,h) , (buf+off/2,h)],
+                              outline=1, fill=0)
+            t = self.getTime()
+            self.draw.text((self.width/2-25, 0), "%s" % t,  font=self.font, fill=1)
+
         else:
             self.draw.polygon([(buf,0), (self.width-buf,0), (self.width-buf-off/2,h) , (buf+off/2,h)],
                               outline=0, fill=1)
@@ -414,6 +449,8 @@ class Display(object):
     
     def roomView(self, events):
         # Generate scrolling event time display
+        # Check if this is a recording time
+        # Decay if idle
         velocity = -0.5
         startpos = self.width-10
         pos = startpos
@@ -423,8 +460,8 @@ class Display(object):
         for ev in events:
             evString = evString+'%d'%(ev['start'])+'for'+'%d/ '%ev['length']
         maxwidth, unused = self.draw.textsize(evString, font=font)
-        AC = self.AwaitCommand()
-        AC.start()
+##        AC = self.AwaitCommand()
+##        AC.start()
         
         while (self.mode == 0): # Until view mode changes
             # Clear image buffer by drawing a black filled box.
@@ -465,14 +502,54 @@ class Display(object):
         #
         self.draw.text((1, self.height/2), 'ADDING', font=self.font, fill=1)
 
+
+    
+                
+
+
+##        while event != ord('q'):
+##        scr = curses.initscr()    
+##        scr.clear()
+##        scr.border(0)
+##        curses.echo()
+##        #curses.curs_set(0)
+##        scr.keypad(1)
+##            
+##        scr.addstr(5, 1, "Ask")
+##        scr.addstr(5, 1, "AAsk")
+##        event = scr.getkey()
+##
+##        scr.clear()
+##        scr.addstr(5, 1, "Quit")
+##        event = 0
+##        while event != ord('4'):
+##            scr.addstr("Enter current time >")
+##            scr.addstr("!")
+##            scr.refresh()
+##            event = scr.getch()
+##            
+##            if event == ord('q'):
+##                curses.endwin()
+##                scr.addstr(5, 1, "Quit")
+##                break
+##            elif event == curses.KEY_DOWN:
+##                break
+##            elif event == ord('5'):
+##                scr.clear()
+##                scr.addstr(4, 1, "Pressed 5")                
+##                curses.endwin()
+##                
+##            scr.addstr("<")
+##            scr.refresh()
+##        curses.nocbreak()
+##        scr.keypad(False)
+##        curses.echo()
+##        curses.endwin()
+
   
 ##
 ##    def roomDel():
 ##        #
-
-
-
-        
 
 ##
 ##
