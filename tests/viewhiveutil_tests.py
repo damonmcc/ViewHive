@@ -50,9 +50,9 @@ def test_tabs():
 
 def test_rooms():
     display = Display()
-    display.mode = 'BLAH'
+    display.mode = 'BLAH'   # enter a random mode
     display.tabs()
-    display.roomMain()
+    display.roomMain()      # show main room
     display.update()
     time.sleep(2)
     
@@ -67,9 +67,12 @@ def test_rooms():
     time.sleep(2)
 
     display.clear()
-    display.mode = 'TIME'
+    display.mode = 'ADD'
     display.tabs()
     display.update()
+
+    display.startRooms(bees.events)
+  
     
     
 

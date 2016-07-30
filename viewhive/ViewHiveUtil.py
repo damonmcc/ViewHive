@@ -3,6 +3,7 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 import time
+from datetime import datetime as dt
 import threading
 import curses
 import Adafruit_SSD1306
@@ -10,7 +11,17 @@ import Adafruit_GPIO.SPI as SPI
 
 #def recordNow():
     #
-
+    
+def now():
+    # Return current time and date as a string
+    return dt.now().strftime("%Y-%m-%d_%H.%M.%S")
+def nowt():
+    # Return current time as a formatted string
+    return dt.now().strftime("%H:%M")
+def nowti():
+    # Return current time as an int
+    return (dt.now().strftime("%H%M"))
+               
 def code1440(time):
     # Convert a 2400 time to 1440 time
     if(len(time) == 4):
@@ -24,19 +35,16 @@ def code1440(time):
     return tRaw
 def code2400(time):
     # Convert a 1400 time to 2400
-    pass
+    if(len(time) == 4):
+        tRaw = (int(time[0])*600+int(time[1])*60)+int(time[2])+int(time[3])
+    elif(len(time) == 3):
+        tRaw = (int(time[0])*60)+int(time[1])+int(time[2])
+    elif(len(time) == 2):
+        tRaw = int(time[0])+int(time[1])
+    else:
+        tRaw = int(time[0])
+    return tRaw
 
-
-screen = curses.initscr()
-curses.echo()
-curses.curs_set(0)
-screen.keypad(1)
-def room(screen):
-    screen.addstr("Thisssss\n\n")
-    while True:
-        event = screen.getch()
-        if event == ord("q"): break
-    screen.addstr(5, 1,"OUT\n\n")
     
 
 class Schedule(object):
@@ -309,6 +317,40 @@ class Schedule(object):
 
 
 
+##  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+def nav(screen):
+    screen.addstr(8,8,"Surfin >")
+    screen.keypad(1)
+    # halfdelay blocks for getch call for x tenths of a second
+    screen.nodelay(1)
+    
+    while True:
+        try:
+            event = screen.getch()
+        except Exception as inst:            
+            screen.addstr(7, 1,"%s"% inst)
+        else:
+            if event == ord("0"): break
+            elif event == ord("1"):
+                return chr(event)
+            elif event == ord("2"):
+                return chr(event)
+            elif event == curses.KEY_UP:
+                screen.addstr(5, 1,"upupupupup\n\n") 
+            elif event == curses.KEY_HOME:
+                return 'CH'
+            elif event == curses.KEY_PPAGE:
+                return 'CH-'
+            elif event == curses.KEY_NPAGE:
+                return 'CH+'
+            else:
+                screen.addstr(5, 1,"TRY AGAIN >")
+                break
+    screen.addstr(5, 1,"OUT\n\n")
+
+
 class Display(object):
     def __init__(self):
         RST = 24
@@ -321,19 +363,28 @@ class Display(object):
         self.font = ImageFont.truetype("GameCube.ttf", 7)       
         
         self.mode = -1
+        self.start = 60
+        # length of decay countdowm
+        self.decay = self.start
+        # initialize decay countdown
+        
         self.disp.begin()
         self.image = Image.new('1', (self.width, self.height))
         self.draw = ImageDraw.Draw(self.image)
         self.draw.rectangle((0,0,self.width,self.height), outline=0, fill=0)
 
+##        
+##        self.screen = curses.initscr()
+##        curses.echo()
+##        curses.curs_set(0)
+##        self.screen.keypad(1)
+
 
     #   Get user-input time string
     def getTime(self):
-        event = 28
-        curses.wrapper(room)
-        curses.wrapper(room)
-
-        return str(event)
+        event = ''
+        event = curses.wrapper(nav)
+        return event
 
 
 ##
@@ -434,72 +485,119 @@ class Display(object):
         elif(self.mode == 'TIME'):
             self.draw.polygon([(buf,0), (self.width-buf,0), (self.width-buf-off/2,h) , (buf+off/2,h)],
                               outline=1, fill=0)
-            t = self.getTime()
-            self.draw.text((self.width/2-25, 0), "%s" % t,  font=self.font, fill=1)
-
+            self.draw.text((self.width/2-25, 0), "%s" % nowt(),  font=self.font, fill=1)
         else:
             self.draw.polygon([(buf,0), (self.width-buf,0), (self.width-buf-off/2,h) , (buf+off/2,h)],
                               outline=0, fill=1)
             self.draw.text((self.width/2-25, 0), 'VIEWHIVE',  font=self.font, fill=0)
 
 
+
+    def startRooms(self, events):
+        recRes = 0.01
+            
+##        self.clear()
+##        self.mode = 'TIME'
+##        self.tabs()
+##        self.update()
+        while self.decay>0:
+            com = curses.wrapper(nav)
+            # nav has nodelay on, so without an entry, continue
+            if(com == 'CH'):
+                self.mode = 'ADD'
+                self.decay = self.start
+            elif(com == 'CH-'):
+                if(self.mode == 'VIEW'): self.mode = 'TIME'
+                elif(self.mode == 'ADD'): self.mode = 'VIEW'
+                elif(self.mode == 'DEL'): self.mode = 'ADD'
+                elif(self.mode == 'TIME'): self.mode = 'DEL'
+                self.decay = self.start
+            elif(com == 'CH+'):
+                if(self.mode == 'VIEW'): self.mode = 'ADD'
+                elif(self.mode == 'ADD'): self.mode = 'DEL'
+                elif(self.mode == 'DEL'): self.mode = 'TIME'
+                elif(self.mode == 'TIME'): self.mode = 'VIEW'
+                self.decay = self.start
+            if(self.decay < self.start/2):  # When decay is almost complete, show countdown
+                self.mode = 'TIME'
+                # Clear image buffer by drawing a black filled box.
+                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                self.draw.text((self.width/2-25,self.height/2), '%.2f' % round(float(self.decay),3),
+                        font=self.font, fill=1)
+            self.showRoom(self.mode, events)
+            self.tabs()
+            self.update()
+            self.decay = self.decay - recRes*2
+            time.sleep(recRes)
+        self.mode == 'TIME'
+        self.tabs()
+        self.update()
+
+    def showRoom(self, mode, events):
+        if(mode == 'VIEW'): self.roomView(events)
+        if(mode == 'ADD'): self.roomMain()
+            
+
     def roomMain(self):
         #
         self.draw.text((1,self.height/2), 'MAIN main', font=self.font, fill=1)
+
     
     def roomView(self, events):
         # Generate scrolling event time display
-        # Check if this is a recording time
-        # Decay if idle
         velocity = -0.5
-        startpos = self.width-10
-        pos = startpos
         i = 0
         evString = ''
         font = self.font = ImageFont.truetype("GameCube.ttf", 7)
         for ev in events:
-            evString = evString+'%d'%(ev['start'])+'for'+'%d/ '%ev['length']
+            evString = evString+'%d'%(ev['start'])+'-'+'%d/ '%ev['length']
         maxwidth, unused = self.draw.textsize(evString, font=font)
+        
+        if(self.start-self.decay == 0):
+            startpos = self.width-10
+        else:
+            startpos = velocity*(self.start-self.decay)
+        pos = startpos
+        if pos < -maxwidth:
+            pos = self.width-10
 ##        AC = self.AwaitCommand()
 ##        AC.start()
-        
-        while (self.mode == 0): # Until view mode changes
-            # Clear image buffer by drawing a black filled box.
-            self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-            # Enumerate characters and draw them offset vertically based on a sine wave.
-            x = pos
-            for i, c in enumerate(evString):
-                # Stop drawing if off the right side of screen.
-                if x > self.width:
-                    break
-                # Calculate width but skip drawing if off the left side of screen.
-                if x < -10:
-                    char_width, char_height = self.draw.textsize(c, font=font)
-                    x += char_width
-                    continue
-                # Calculate offset from screen size.
-                y = self.height/2
-                # Draw text.
-                self.draw.text((x, y), c, font=self.font, fill=1)
-                # Increment x position based on chacacter width.
+        # Clear image buffer by drawing a black filled box.
+        self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+        # Enumerate characters and draw them
+        x = pos
+        for i, c in enumerate(evString):
+            # Stop drawing if off the right side of screen.
+            if x > self.width:
+                break
+            # Calculate width but skip drawing if off the left side of screen.
+            if x < -10:
                 char_width, char_height = self.draw.textsize(c, font=font)
                 x += char_width
-            # Draw the image buffer.
-            self.disp.image(self.image)
-            self.disp.display()
-            # Move position for next frame.
-            pos += velocity
-            # Start over if text has scrolled completely off left side of screen.
-            if pos < -maxwidth:
-                pos = startpos
-            # Pause briefly before drawing next frame.
-            time.sleep(0.1)
+                continue
+            # Calculate offset from screen size.
+            y = self.height/2
+            # Draw text.
+            self.draw.text((x, y), c, font=self.font, fill=1)
+            # Increment x position based on chacacter width.
+            char_width, char_height = self.draw.textsize(c, font=font)
+            x += char_width
+        # Draw the image buffer.
+        self.disp.image(self.image)
+        self.disp.display()
+        # Move position for next frame.
+        pos += velocity
+        # Start over if text has scrolled completely off left side of screen.
+        if pos < -maxwidth:
+            pos = startpos
+        # Pause briefly before drawing next frame.
+        # time.sleep(0.1)
 
             
     
 
     def roomAdd(self, schedule):
-        #
+        # Add an event
         self.draw.text((1, self.height/2), 'ADDING', font=self.font, fill=1)
 
 

@@ -1,6 +1,6 @@
+from ViewHiveUtil import *
 from picamera import PiCamera, Color
 from time import sleep
-from datetime import datetime as dt
 import subprocess
 import shutil
 import sys
@@ -14,8 +14,7 @@ def silentremove(filename):
     except OSError as e:
         if e.errno != errno.ENOENT: # no such file or directory
             raise # re-raise exception if a different error occured
-def now():
-    return dt.now().strftime("%Y-%m-%d_%H.%M.%S")
+
 
 def synchSchedule():
     # Copy local schedule file to wittyPi directories 
