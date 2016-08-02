@@ -325,15 +325,18 @@ def nav(screen):
     screen.keypad(1)
     # halfdelay blocks for getch call for x tenths of a second
     screen.nodelay(1)
-    
-    while True:
+    tic=0
+    action = True
+    while action:
         try:
             event = screen.getkey()
+            action = True
         except Exception as inst:            
             screen.addstr(10, 1,"* nav error: %s"% inst)
 ##            print("*** nav error: %s"%inst)
 ##            return 'e'
 ##            return 'decay'
+            action = False
         else:
             screen.addstr(4, 1,"Got event %s"%event)
             if event == ord("0"): break
