@@ -1,11 +1,14 @@
-ViewHive v0.6 README
+ViewHive v0.7 README
 ==========
 
-Python script to record video on a Raspberry Pi and save to external USB storage as an mp4. Recording begins at startup. Time setting and recording settings are set by an IR remote and an OLED display shows the menus and input.
+Python script to record video on a Raspberry Pi and save to external USB storage as an mp4. Recordings begin at startup at scheduled times and cools down when left alone to conserve battery.
+
+Schedule and recording settings are set by an IR remote while an OLED display shows menus and input.
 
 
 Uses:
 Raspberry Pi (Debian)
+128x32 SPI OLED Display
 Python 3
 WittyPi
 MP4Bbox
