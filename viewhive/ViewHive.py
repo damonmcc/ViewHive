@@ -4,7 +4,6 @@ from time import sleep
 import subprocess
 import shutil
 import sys
-
 import lirc
 import os, errno
 def silentremove(filename):
@@ -14,8 +13,6 @@ def silentremove(filename):
     except OSError as e:
         if e.errno != errno.ENOENT: # no such file or directory
             raise # re-raise exception if a different error occured
-
-
 def synchSchedule():
     # Copy local schedule file to wittyPi directories 
     os.system("sudo cp -v ./HVScript0.wpi /home/wittyPi/schedules/HVScriptIMPORT.wpi")
@@ -23,7 +20,6 @@ def synchSchedule():
     # Set wittyPi schedule with its runScript.sh
     print(subprocess.check_output(["sudo", "/home/wittyPi/runScript.sh"],
                               universal_newlines = True))
-
 def waitforUSB(drivename):
     while os.path.exists(drivename) == False:
           print("Waiting for %s USB..." % drivename)
@@ -31,7 +27,7 @@ def waitforUSB(drivename):
     print("%s detected..."% drivename)
     timestamp = now()
 
-    
+
 camera = PiCamera()
 camera.rotation = 180
 camera.resolution = (1920, 1080)
@@ -40,7 +36,7 @@ camera.framerate = 30
 #camera.framerate = 49
 camera.annotate_background = Color('grey')
 camera.annotate_foreground = Color('purple')
-sleep(3)
+sleep(5)
 timestamp = now()
 recRes = 0.01 # resolution of elapsed time counter (seconds)
 #####
@@ -49,7 +45,7 @@ recRes = 0.01 # resolution of elapsed time counter (seconds)
 recPeriod = 10 # Seconds to record
 
 dstroot = '/media/pi/BEEVIDS/'
-codetroot = '/home/pi/Documents/Python 3 Projects/Bee Camera'
+coderoot = '/home/pi/ViewHive/viewhive/ViewHive'
 #
 #
 #####
@@ -66,6 +62,14 @@ srcfile = '%s.h264' % timestamp
 srcroot = '/home/pi/Videos/%s' % srcfile
 convCommand = 'MP4Box -add {0}.h264 {1}.mp4'.format(timestamp,timestamp)
 
+try:
+    display = Display()
+    print('Display started')
+    display.welcome()
+    print('Welcome started')
+except:
+    print('Display FAILED')
+    print('Unexpected error: %s'%sys.exc_info()[0])
 
 camera.start_recording(srcroot, format='h264')
 camera.led = True

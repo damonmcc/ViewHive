@@ -22,7 +22,7 @@ def test_events():
     bees = Schedule("Bees", "ScriptUTIL.wpi")
     bees.WpiToEvents()
     display = Display()
-    display.eventsBar(bees.events)
+    display.eventsBar()
     display.update()
     time.sleep(1)
 
@@ -30,7 +30,7 @@ def test_tabs():
     display = Display()
     bees = Schedule("Bees", "ScriptUTIL.wpi")
     bees.WpiToEvents()
-    display.eventsBar(bees.events)
+    display.eventsBar()
     display.mode = 'VIEW'
     display.tabs()
     display.update()
@@ -58,11 +58,12 @@ def test_rooms():
     
     bees = Schedule("Bees", "ScriptUTIL.wpi")
     bees.WpiToEvents()
-    display.clear()
     display.mode = 'VIEW'
+    display.events = bees.events
+
+    display.clear()
     display.tabs()
-    display.eventsBar(bees.events)
-    display.roomView(bees.events)
+    display.eventsBar()
     display.update()
     time.sleep(2)
 
@@ -71,7 +72,7 @@ def test_rooms():
     display.tabs()
     display.update()
 
-    display.startRooms(bees.events)
+    display.startRooms()
   
     
     

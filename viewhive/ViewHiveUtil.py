@@ -285,7 +285,7 @@ class Schedule(object):
             self.events = []
             print("Events cleared! There are %d events:" % len(self.events))
     
-    #   Clear an event object's time attributes to 0000
+    #   Return a blank event item
     def clearEvent(self):
         blankEvent = {'start' : 0000,
                  'length' : 0000}
@@ -328,31 +328,57 @@ def nav(screen):
     
     while True:
         try:
-            event = screen.getch()
+            event = screen.getkey()
         except Exception as inst:            
-            screen.addstr(7, 1,"%s"% inst)
+            screen.addstr(10, 1,"* nav error: %s"% inst)
+##            print("*** nav error: %s"%inst)
+##            return 'e'
+##            return 'decay'
         else:
+            screen.addstr(4, 1,"Got event %s"%event)
             if event == ord("0"): break
-            elif event == ord("1"):
-                return chr(event)
             elif event == ord("2"):
                 return chr(event)
             elif event == curses.KEY_UP:
                 screen.addstr(5, 1,"upupupupup\n\n") 
-            elif event == curses.KEY_HOME:
+            elif event == 'KEY_HOME':
                 return 'CH'
-            elif event == curses.KEY_PPAGE:
+            elif event == 'KEY_PPAGE':
                 return 'CH-'
-            elif event == curses.KEY_NPAGE:
+            elif event == 'KEY_NPAGE':
                 return 'CH+'
+            elif event == 'KEY_F(3)':
+                return 'L'
+            elif event == 'KEY_F(4)':
+                return 'R'
+            elif event == 'KEY_END':
+                return 'P'
+            elif event == 'KEY_UP':
+                return 'U'
+            elif event == 'KEY_DOWN':
+                return 'D'
+            elif event == 'KEY_ENTER':
+                return 'ENT'
+##            
+##            elif int(event) > -1 and int(event) < 10:
+##                return event
+            elif event == 'KEY_F1':     # 100+ button
+                return 'F1'
+            elif event == 'KEY_F2':     # 200+ button
+                return 'F2'
             else:
-                screen.addstr(5, 1,"TRY AGAIN >")
-                break
+                screen.addstr(5, 1,"TRY AGAIN (not %s) >"%event)
     screen.addstr(5, 1,"OUT\n\n")
+
+#   Get user-input time string
+def getTime(screen):
+    time = screen.getstr()
+    return time
 
 
 class Display(object):
     def __init__(self):
+        print('Display instance starting...')
         RST = 24
         DC = 23
         SPI_PORT = 0
@@ -360,16 +386,24 @@ class Display(object):
         self.disp = Adafruit_SSD1306.SSD1306_128_32(rst=RST, dc=DC, spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=8000000))
         self.width = self.disp.width
         self.height = self.disp.height
-        self.font = ImageFont.truetype("GameCube.ttf", 7)       
+        self.font = ImageFont.truetype("GameCube.ttf", 7)
+        self.events = []
+
         
+        print('...')
         self.mode = -1
+        self.fresh = True
         self.start = 60
         # length of decay countdowm
         self.decay = self.start
         # initialize decay countdown
+
         
+        print('....')
         self.disp.begin()
         self.image = Image.new('1', (self.width, self.height))
+        
+        print('.....')
         self.draw = ImageDraw.Draw(self.image)
         self.draw.rectangle((0,0,self.width,self.height), outline=0, fill=0)
 
@@ -380,11 +414,7 @@ class Display(object):
 ##        self.screen.keypad(1)
 
 
-    #   Get user-input time string
-    def getTime(self):
-        event = ''
-        event = curses.wrapper(nav)
-        return event
+
 
 
 ##
@@ -415,7 +445,7 @@ class Display(object):
         self.update()
         time.sleep(3)
 
-    def eventsBar(self, events):
+    def eventsBar(self):
         i=0     #   1440 minutes in a day
         while(i<=1440):
             x = (128*(i/1400))
@@ -428,7 +458,7 @@ class Display(object):
             else:
                 self.draw.line(((x,31), (x,self.height)), fill=1)
             i+=30
-        for ev in events:
+        for ev in self.events:
             start = code1440(str(ev['start']))
             length = code1440(str(ev['length']))
             
@@ -493,108 +523,124 @@ class Display(object):
 
 
 
-    def startRooms(self, events):
-        recRes = 0.01
-            
+    def startRooms(self):
 ##        self.clear()
 ##        self.mode = 'TIME'
 ##        self.tabs()
 ##        self.update()
+        recRes = 0.01
         while self.decay>0:
             com = curses.wrapper(nav)
+            if(self.fresh == True): i = 0   # If this view is fresh, reset item index
+            if(com == 'decay'):
+                self.update()
+                self.decay -= recRes*2
+                time.sleep(recRes)
+                continue
+            # Interpret selections at a navigation level
             # nav has nodelay on, so without an entry, continue
             if(com == 'CH'):
                 self.mode = 'ADD'
+                self.fresh = True
                 self.decay = self.start
             elif(com == 'CH-'):
                 if(self.mode == 'VIEW'): self.mode = 'TIME'
                 elif(self.mode == 'ADD'): self.mode = 'VIEW'
                 elif(self.mode == 'DEL'): self.mode = 'ADD'
                 elif(self.mode == 'TIME'): self.mode = 'DEL'
+                self.fresh = True
                 self.decay = self.start
             elif(com == 'CH+'):
                 if(self.mode == 'VIEW'): self.mode = 'ADD'
                 elif(self.mode == 'ADD'): self.mode = 'DEL'
                 elif(self.mode == 'DEL'): self.mode = 'TIME'
                 elif(self.mode == 'TIME'): self.mode = 'VIEW'
+                self.fresh = True
                 self.decay = self.start
+            elif(com == 'P'):
+                 i += 1
+                 self.fresh = False
+            # Interpret Left and Right commands
+            elif(com == 'R'):
+                if(i==len(self.events)-1): pass
+                else:
+                    i += 1
+                    self.fresh = False
+            elif(com == 'L'):
+                if(i==0): pass
+                else:
+                    i -= 1 
+                    self.fresh = False
+            
+            
             if(self.decay < self.start/2):  # When decay is almost complete, show countdown
                 self.mode = 'TIME'
                 # Clear image buffer by drawing a black filled box.
                 self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
                 self.draw.text((self.width/2-25,self.height/2), '%.2f' % round(float(self.decay),3),
                         font=self.font, fill=1)
-            self.showRoom(self.mode, events)
+            
+            self.showRoom(self.mode, i)
             self.tabs()
+            self.draw.text((120,self.height/2), '%s' % i,
+                        font=self.font, fill=1)
+            
             self.update()
-            self.decay = self.decay - recRes*2
+            self.decay -= recRes*2
             time.sleep(recRes)
+        # Decay is complete, SHUTDOWN
         self.mode == 'TIME'
         self.tabs()
         self.update()
 
-    def showRoom(self, mode, events):
-        if(mode == 'VIEW'): self.roomView(events)
+    def showRoom(self, mode, i):
+        if(mode == 'VIEW'): self.roomView(i)
         if(mode == 'ADD'): self.roomMain()
+        if(mode == 'TIME'): self.roomTime(i)
+
+
             
 
     def roomMain(self):
         #
+        # Clear image buffer by drawing a black filled box.
+        self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
         self.draw.text((1,self.height/2), 'MAIN main', font=self.font, fill=1)
 
     
-    def roomView(self, events):
-        # Generate scrolling event time display
-        velocity = -0.5
-        i = 0
-        evString = ''
-        font = self.font = ImageFont.truetype("GameCube.ttf", 7)
-        for ev in events:
-            evString = evString+'%d'%(ev['start'])+'-'+'%d/ '%ev['length']
-        maxwidth, unused = self.draw.textsize(evString, font=font)
-        
-        if(self.start-self.decay == 0):
-            startpos = self.width-10
-        else:
-            startpos = velocity*(self.start-self.decay)
-        pos = startpos
-        if pos < -maxwidth:
-            pos = self.width-10
-##        AC = self.AwaitCommand()
-##        AC.start()
+    def roomView(self, i):
+        i = i
+
+        cur = self.events[i]
+        curString = '%d) %d'%(i+1, cur['start'])+' for '+'%d.'%cur['length']
+               
         # Clear image buffer by drawing a black filled box.
         self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-        # Enumerate characters and draw them
-        x = pos
-        for i, c in enumerate(evString):
-            # Stop drawing if off the right side of screen.
-            if x > self.width:
-                break
-            # Calculate width but skip drawing if off the left side of screen.
-            if x < -10:
-                char_width, char_height = self.draw.textsize(c, font=font)
-                x += char_width
-                continue
-            # Calculate offset from screen size.
-            y = self.height/2
-            # Draw text.
-            self.draw.text((x, y), c, font=self.font, fill=1)
-            # Increment x position based on chacacter width.
-            char_width, char_height = self.draw.textsize(c, font=font)
-            x += char_width
-        # Draw the image buffer.
-        self.disp.image(self.image)
-        self.disp.display()
-        # Move position for next frame.
-        pos += velocity
-        # Start over if text has scrolled completely off left side of screen.
-        if pos < -maxwidth:
-            pos = startpos
-        # Pause briefly before drawing next frame.
-        # time.sleep(0.1)
+        self.draw.text((3 ,self.height/2), '%s' % curString,
+                        font=self.font, fill=1)
+        if(len(self.events)>1 and i<len(self.events)-1):
+            self.draw.text((self.width-10,self.height/2), '...',
+                        font=self.font, fill=1)
+        self.eventsBar()
 
-            
-    
+        
+    def roomTime(self, i):
+        # Clear image buffer by drawing a black filled box.
+        self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+        
+        if(i == -1):    # Setting system/RTC time
+            self.draw.text((3 ,self.height/2), 'Give cur. time:',
+                       font=self.font, fill=1)
+            time = curses.wrapper(getTime)            
+            self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+            self.draw.text((3 ,self.height/2), '%s' % time,
+                       font=self.font, fill=1)
+        else:           # Show current time in tabs and decay coutdown
+            time = nowt()
+            self.draw.text((self.width/2-25,self.height/2), '%.2f' % round(float(self.decay),3),
+                        font=self.font, fill=1)
+        
+        
 
     def roomAdd(self, schedule):
         # Add an event
