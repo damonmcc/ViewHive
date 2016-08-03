@@ -57,7 +57,7 @@ camera.start_preview(alpha=200)
 print('*** Active on %s***\n' % timestamp)
 synchSchedule()
 waitforUSB(dstroot)
-
+timestamp = now()
 srcfile = '%s.h264' % timestamp
 srcroot = '/home/pi/Videos/%s' % srcfile
 convCommand = 'MP4Box -add {0}.h264 {1}.mp4'.format(timestamp,timestamp)

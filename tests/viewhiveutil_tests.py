@@ -15,51 +15,53 @@ def test_schedule_read():
     old.showEvents()
 
 def test_display():
-    display = Display()
+    display = Display(0)
     display.welcome()
 
 def test_events():
     bees = Schedule("Bees", "ScriptUTIL.wpi")
     bees.WpiToEvents()
-    display = Display()
+    
+    display = Display(bees)
     display.eventsBar()
     display.update()
-    time.sleep(1)
+    time.sleep(0.3)
 
 def test_tabs():
-    display = Display()
     bees = Schedule("Bees", "ScriptUTIL.wpi")
     bees.WpiToEvents()
+    
+    display = Display(bees)
     display.eventsBar()
     display.mode = 'VIEW'
     display.tabs()
     display.update()
-    time.sleep(0.5)
+    time.sleep(0.3)
     
     display.clear()
     display.mode = 'ADD'
     display.tabs()
     display.update()
-    time.sleep(0.5)
+    time.sleep(0.3)
 
     display.clear()
     display.mode = 'DEL'
     display.tabs()
     display.update()
-    time.sleep(1)
+    time.sleep(0.3)
 
 def test_rooms():
-    display = Display()
+    bees = Schedule("Bees", "ScriptUTIL.wpi")
+    bees.WpiToEvents()
+
+    display = Display(bees)
     display.mode = 'BLAH'   # enter a random mode
     display.tabs()
     display.roomMain()      # show main room
     display.update()
     time.sleep(2)
     
-    bees = Schedule("Bees", "ScriptUTIL.wpi")
-    bees.WpiToEvents()
     display.mode = 'VIEW'
-    display.events = bees.events
 
     display.clear()
     display.tabs()

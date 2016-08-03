@@ -170,8 +170,6 @@ class Schedule(object):
         #   Combine all command stings into contents
         self.content = '\n'.join(wpiCommands)
         self.showContent()
-
-        
         
     #   Convert Witty Pi schedule text to an events list
     def WpiToEvents(self):
@@ -244,18 +242,23 @@ class Schedule(object):
                 print("NON-command on this line ", curCommand)
                 i+=1
 
+
+
+
+
     #
     #   Ask for and append a new event entry (start/end times)
-    def addEvent(self):
+    def addEvent(self, s, l):
         print("Adding an event ... "),
         # Create an empty new event
         newEvent = {'start' : 0000,
                   'length' : 0000}
+        
         while True:
             try:
-                newEvent['start'] = int(input("Enter start time (0000)> "))
-                newEvent['length'] = int(input("Enter rec. length (0000)> "))
-##                newEvent['end'] = newEvent['start'] + newEvent['length']
+                newEvent['start'] = s
+                newEvent['length'] = l
+
                 assert (newEvent['start'] < 2400) or (newEvent['length'] < 2400), "Entered a start%d/length%d greater than 2400!"% (newEvent['start'], newEvent['start'])
                 assert newEvent['length'] != 0, "Entered 0000 for length!"
                 break
@@ -265,25 +268,20 @@ class Schedule(object):
             except AssertionError as strerror:
                 print("%s Try again!"% strerror),
         
-        
-        # Confirm before saving
-        print("End time: %04d\nSave this event?" % (newEvent['start']+newEvent['length'])),
-        if(self.confirmed()):  # Pressed ENTER
-            self.events.append(newEvent)
-            self.ED = SortedDict(self.events)
-            print("New event added! There are %d events:" % len(self.events))
-            self.showEvents()
-        else:   # Pressed anything else
-            print("Canceled save with %s aka %r button!" % (save, save))
-            self.showEvents()
+        self.events.append(newEvent)
+        self.ED = SortedDict(self.events)
+        print("New event added! There are %d events:" % len(self.events))
+        self.showEvents()
 
     #
     #   Empty the schedule's event list
     def clearAllEvents(self):
         print("Clearing events..."),
-        if(self.confirmed()):
-            self.events = []
-            print("Events cleared! There are %d events:" % len(self.events))
+        newEvent = {'start' : 0000,
+                  'length' : 0000}
+        self.events.clear()
+        self.ED = SortedDict(self.events)
+        print("Events cleared! There are %d events:" % len(self.events))
     
     #   Return a blank event item
     def clearEvent(self):
@@ -292,17 +290,7 @@ class Schedule(object):
         return blankEvent
 
 
-   
-
-    #   Ask user to confirm a task and return result
-    def confirmed(self):
-        if(input("Confirm with ENTER? >")==''):
-            return True
-        else:
-            print("CANCELED")
-            return False
-
-    def sync():
+    def sync(self):
         # sync object with schedule file
         # truncate
         # write header comments
@@ -325,7 +313,6 @@ def nav(screen):
     screen.keypad(1)
     # halfdelay blocks for getch call for x tenths of a second
     screen.nodelay(1)
-    tic=0
     action = True
     while action:
         try:
@@ -336,14 +323,13 @@ def nav(screen):
 ##            print("*** nav error: %s"%inst)
 ##            return 'e'
 ##            return 'decay'
-            action = False
+##            action = False
         else:
-            screen.addstr(4, 1,"Got event %s"%event)
-            if event == ord("0"): break
+            screen.addstr(4, 1,"Got nav event %s"%event)
+##            if screen.getch
+            if event == '0': return 0
             elif event == ord("2"):
                 return chr(event)
-            elif event == curses.KEY_UP:
-                screen.addstr(5, 1,"upupupupup\n\n") 
             elif event == 'KEY_HOME':
                 return 'CH'
             elif event == 'KEY_PPAGE':
@@ -362,25 +348,46 @@ def nav(screen):
                 return 'D'
             elif event == 'KEY_ENTER':
                 return 'ENT'
-##            
-##            elif int(event) > -1 and int(event) < 10:
-##                return event
+            
             elif event == 'KEY_F1':     # 100+ button
                 return 'F1'
             elif event == 'KEY_F2':     # 200+ button
                 return 'F2'
+            elif event == '0': return 0
+            elif event == '1': return 1
             else:
                 screen.addstr(5, 1,"TRY AGAIN (not %s) >"%event)
     screen.addstr(5, 1,"OUT\n\n")
 
+#   Get user confirmation
+def getConfirm(screen):
+    screen.addstr(3,8,"Confirm by pressing ENTER >")
+    screen.nodelay(0)
+    screen.keypad(1)
+    curses.echo()
+    try:
+        event = screen.getkey()
+    except Exception as inst:            
+        screen.addstr(11, 1,"* conf error: %s"% inst)
+    else:
+        screen.addstr(5, 1,"Got confirm event %s"% event)
+        if event == '\n':
+            screen.addstr(5, 20,"CONFIRMED")
+            return True
+        else: return False
+        
+
 #   Get user-input time string
 def getTime(screen):
+    screen.addstr(3,8,"Enter a time and press ENTER >")
+    screen.nodelay(0)
+    curses.echo()
     time = screen.getstr()
-    return time
+    return int(time)
 
 
 class Display(object):
-    def __init__(self):
+    def __init__(self, sch):
         print('Display instance starting...')
         RST = 24
         DC = 23
@@ -390,7 +397,11 @@ class Display(object):
         self.width = self.disp.width
         self.height = self.disp.height
         self.font = ImageFont.truetype("GameCube.ttf", 7)
-        self.events = []
+        if sch == 0:
+            self.schedule = []
+        else:
+            self.schedule = sch
+            self.events = sch.events
 
         
         print('...')
@@ -448,8 +459,246 @@ class Display(object):
         self.update()
         time.sleep(3)
 
+
+
+    def startRooms(self):
+##        self.clear()
+##        self.mode = 'TIME'
+##        self.tabs()
+##        self.update()
+        recRes = 0.01
+        while self.decay>0:
+            com = curses.wrapper(nav)
+            if(self.fresh == True):
+                i = 0   # If this view is fresh, reset item index
+            if(com == 'decay'):
+                self.update()
+                self.decay -= recRes*2
+                time.sleep(recRes)
+                continue
+            # Interpret selections at a navigation level
+            # nav has nodelay on, so without an entry, continue
+            if(com == 'CH'):
+                self.mode = 'ADD'
+                self.fresh = True
+                self.decay = self.start
+            elif(com == 'CH-'):
+                if(self.mode == 'VIEW'): self.mode = 'TIME'
+                elif(self.mode == 'ADD'): self.mode = 'VIEW'
+                elif(self.mode == 'DEL'): self.mode = 'ADD'
+                elif(self.mode == 'TIME'): self.mode = 'DEL'
+                self.fresh = True
+                self.decay = self.start
+            elif(com == 'CH+'):
+                if(self.mode == 'VIEW'): self.mode = 'ADD'
+                elif(self.mode == 'ADD'): self.mode = 'DEL'
+                elif(self.mode == 'DEL'): self.mode = 'TIME'
+                elif(self.mode == 'TIME'): self.mode = 'VIEW'
+                self.fresh = True
+                self.decay = self.start
+
+            
+            elif(com == 'P' or com == 'ENT'):
+                 if(self.mode == 'TIME' or self.mode == 'ADD'): i = -1
+                 self.fresh = False
+                 
+            elif (com == 0 and self.mode == 'DEL'): i = -1
+            elif (com == 1 and self.mode == 'ADD'): i = -1
+            
+            # Interpret Left and Right commands
+            elif(com == 'R'):
+                if(i==len(self.events)-1): pass
+                else:
+                    i += 1
+                    self.fresh = False
+            elif(com == 'L'):
+                if(i==0): pass
+                else:
+                    i -= 1 
+                    self.fresh = False
+                    
+            
+            
+            if(self.decay < self.start/2):  # When decay is almost complete, show countdown
+                self.mode = 'TIME'
+                # Clear image buffer by drawing a black filled box.
+                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                self.draw.text((self.width/2-25,self.height/2), '%.2f' % round(float(self.decay),3),
+                        font=self.font, fill=1)
+
+            
+            self.tabs()
+            self.showRoom(self.mode, i)
+            self.eventsBar()
+            self.draw.text((120,self.height/2), '%s' % i,
+                        font=self.font, fill=1)
+            
+            self.update()
+            self.decay -= recRes*2
+            time.sleep(recRes/2)
+        # Decay is complete, SHUTDOWN
+        self.mode == 'TIME'
+        self.tabs()
+        self.update()
+
+    def showRoom(self, mode, i):
+        if(mode == 'VIEW'): self.roomView(i)
+        if(mode == 'ADD'): self.roomAdd(i)
+        if(mode == 'DEL'): self.roomDelete(i)
+        if(mode == 'TIME'): self.roomTime(i)
+
+
+
+
+
+
+
+            
+
+    def roomMain(self):
+        # Clear image buffer by drawing a black filled box.
+        self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+        self.draw.text((1,self.height/2), 'MAIN main', font=self.font, fill=1)
+
+    
+    def roomView(self, i):
+        i = i
+        if(len(self.events)==0):
+            curString = 'No events scheduled'
+        else:
+            cur = self.events[i]
+            curString = '%d) %d'%(i+1, cur['start'])+' for '+'%d.'%cur['length']
+            if(len(self.events)>1 and i<len(self.events)-1):
+                self.draw.text((self.width-10,self.height/2), '...',
+                            font=self.font, fill=1)
+        # Clear image buffer by drawing a black filled box.
+        self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+        self.draw.text((3 ,self.height/2), '%s' % curString,
+                        font=self.font, fill=1)
+##        self.eventsBar()
+
+    def roomDelete(self, i):
+        i = i
+        # Clear image buffer by drawing a black filled box.
+        self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+        if i == -1:
+            self.draw.text((2, self.height/2), "Delete all events?",
+                           font=self.font, fill=1)
+            
+            self.update()
+            answer = curses.wrapper(getConfirm)
+            
+            self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+            if answer == True :
+                ## Call schedule delete function
+                self.schedule.clearAllEvents()
+                self.draw.text((self.width/2-30, self.height/2), "DELETED!",
+                           font=self.font, fill=1)
+            else:
+                self.draw.text((self.width/2-28, self.height/2), "Canceled",
+                           font=self.font, fill=1)
+            self.update()
+            time.sleep(2)
+            self.fresh = True
+        elif i == 0:
+            self.draw.text((2, self.height/2), "Press 0",
+                           font=self.font, fill=1)
+            self.fresh = True
+                
+        
+    def roomTime(self, i):
+        # Clear image buffer by drawing a black filled box.
+        self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+        i = i
+        if(i == -1):    # Setting system/RTC time
+            self.draw.text((3 ,self.height/2), 'Give cur. time:',
+                       font=self.font, fill=1)
+            
+            time = curses.wrapper(getTime)
+            # Clear image buffer by drawing a black filled box.
+            self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+            self.draw.text((3 ,self.height/2), '%d' % time,
+                       font=self.font, fill=1)
+            self.fresh = True
+        else:           # Show current time in tabs and decay coutdown
+            time = nowt()
+            self.draw.text((self.width/2-25,self.height/2), '%.2f' % round(float(self.decay),3),
+                        font=self.font, fill=1)
+        
+        
+
+    def roomAdd(self, i):
+        # Add an event
+
+        i = i
+        # Clear image buffer by drawing a black filled box.
+        self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+        if i == -1:
+            self.draw.text((2, self.height/2), "Add an event?",
+                           font=self.font, fill=1)
+            self.update()
+            
+            answer = curses.wrapper(getConfirm)
+            self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+            if answer == True :
+                self.draw.text((1, self.height/2), 'ADDING', font=self.font, fill=1)
+                self.update()
+                time.sleep(2)
+                # Get start and length times for new event
+                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                self.draw.text((1, self.height/2), 'Enter start time 0000 >',
+                               font=self.font, fill=1)
+                self.update()
+                start = curses.wrapper(getTime)     # Start time from 0000 to 24000
+                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                self.draw.text((1, self.height/2), 'Enter rec. length 0000 >',
+                               font=self.font, fill=1)
+                self.update()
+                length = curses.wrapper(getTime)    # Length of event
+
+                # Now confirm these entries
+                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                self.draw.text((2, self.height/2), "At %d for %d?"% (start,length),
+                           font=self.font, fill=1)
+                self.update()
+                
+                conf = curses.wrapper(getConfirm)
+                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                if conf == True :
+                    ## Call schedule add function
+                    self.schedule.addEvent(start, length)
+                    self.draw.text((1, self.height/2), 'Event ADDED...', font=self.font, fill=1)
+                    ## Call schedule synch function
+
+
+
+
+
+                    
+                    self.draw.text((1, self.height/2), 'Events SYNCHED', font=self.font, fill=1)
+                else:
+                    self.draw.text((self.width/2-28, self.height/2), "Canceled SAVE",
+                               font=self.font, fill=1)
+            else:
+                self.draw.text((self.width/2-28, self.height/2), "Canceled ADD",
+                           font=self.font, fill=1)
+            
+        elif i == 0:
+            self.draw.text((2, self.height/2), "Press 1",
+                           font=self.font, fill=1)
+            self.fresh = True
+
+    
+
+
+
+
+                
+
     def eventsBar(self):
         i=0     #   1440 minutes in a day
+        # Clear image buffer by drawing a black filled box.
+        self.draw.rectangle((0,28,self.width,self.height), outline=0, fill=0)
         while(i<=1440):
             x = (128*(i/1400))
             if(i%720 == 0):
@@ -459,7 +708,8 @@ class Display(object):
             elif(i%60 == 0):
                 self.draw.line(((x,30) , (x,self.height)), fill=1)
             else:
-                self.draw.line(((x,31), (x,self.height)), fill=1)
+                ##self.draw.line(((x,31), (x,self.height)), fill=1)
+                pass
             i+=30
         for ev in self.events:
             start = code1440(str(ev['start']))
@@ -469,7 +719,6 @@ class Display(object):
             e = (128*((start+length)/1440))
             self.draw.chord((s,28 , e,self.height), -180,0, outline=1, fill=1)
 ##            self.draw.line(((s, 20) , (s,32)), fill=1)
-            
 
     def tabs(self):
         length = 40
@@ -523,180 +772,6 @@ class Display(object):
             self.draw.polygon([(buf,0), (self.width-buf,0), (self.width-buf-off/2,h) , (buf+off/2,h)],
                               outline=0, fill=1)
             self.draw.text((self.width/2-25, 0), 'VIEWHIVE',  font=self.font, fill=0)
-
-
-
-    def startRooms(self):
-##        self.clear()
-##        self.mode = 'TIME'
-##        self.tabs()
-##        self.update()
-        recRes = 0.01
-        while self.decay>0:
-            com = curses.wrapper(nav)
-            if(self.fresh == True): i = 0   # If this view is fresh, reset item index
-            if(com == 'decay'):
-                self.update()
-                self.decay -= recRes*2
-                time.sleep(recRes)
-                continue
-            # Interpret selections at a navigation level
-            # nav has nodelay on, so without an entry, continue
-            if(com == 'CH'):
-                self.mode = 'ADD'
-                self.fresh = True
-                self.decay = self.start
-            elif(com == 'CH-'):
-                if(self.mode == 'VIEW'): self.mode = 'TIME'
-                elif(self.mode == 'ADD'): self.mode = 'VIEW'
-                elif(self.mode == 'DEL'): self.mode = 'ADD'
-                elif(self.mode == 'TIME'): self.mode = 'DEL'
-                self.fresh = True
-                self.decay = self.start
-            elif(com == 'CH+'):
-                if(self.mode == 'VIEW'): self.mode = 'ADD'
-                elif(self.mode == 'ADD'): self.mode = 'DEL'
-                elif(self.mode == 'DEL'): self.mode = 'TIME'
-                elif(self.mode == 'TIME'): self.mode = 'VIEW'
-                self.fresh = True
-                self.decay = self.start
-            elif(com == 'P'):
-                 i += 1
-                 self.fresh = False
-            # Interpret Left and Right commands
-            elif(com == 'R'):
-                if(i==len(self.events)-1): pass
-                else:
-                    i += 1
-                    self.fresh = False
-            elif(com == 'L'):
-                if(i==0): pass
-                else:
-                    i -= 1 
-                    self.fresh = False
-            
-            
-            if(self.decay < self.start/2):  # When decay is almost complete, show countdown
-                self.mode = 'TIME'
-                # Clear image buffer by drawing a black filled box.
-                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-                self.draw.text((self.width/2-25,self.height/2), '%.2f' % round(float(self.decay),3),
-                        font=self.font, fill=1)
-            
-            self.showRoom(self.mode, i)
-            self.tabs()
-            self.draw.text((120,self.height/2), '%s' % i,
-                        font=self.font, fill=1)
-            
-            self.update()
-            self.decay -= recRes*2
-            time.sleep(recRes)
-        # Decay is complete, SHUTDOWN
-        self.mode == 'TIME'
-        self.tabs()
-        self.update()
-
-    def showRoom(self, mode, i):
-        if(mode == 'VIEW'): self.roomView(i)
-        if(mode == 'ADD'): self.roomMain()
-        if(mode == 'TIME'): self.roomTime(i)
-
-
-            
-
-    def roomMain(self):
-        #
-        # Clear image buffer by drawing a black filled box.
-        self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-        self.draw.text((1,self.height/2), 'MAIN main', font=self.font, fill=1)
-
-    
-    def roomView(self, i):
-        i = i
-
-        cur = self.events[i]
-        curString = '%d) %d'%(i+1, cur['start'])+' for '+'%d.'%cur['length']
-               
-        # Clear image buffer by drawing a black filled box.
-        self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-        self.draw.text((3 ,self.height/2), '%s' % curString,
-                        font=self.font, fill=1)
-        if(len(self.events)>1 and i<len(self.events)-1):
-            self.draw.text((self.width-10,self.height/2), '...',
-                        font=self.font, fill=1)
-        self.eventsBar()
-
-        
-    def roomTime(self, i):
-        # Clear image buffer by drawing a black filled box.
-        self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-        
-        if(i == -1):    # Setting system/RTC time
-            self.draw.text((3 ,self.height/2), 'Give cur. time:',
-                       font=self.font, fill=1)
-            time = curses.wrapper(getTime)            
-            self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-            self.draw.text((3 ,self.height/2), '%s' % time,
-                       font=self.font, fill=1)
-        else:           # Show current time in tabs and decay coutdown
-            time = nowt()
-            self.draw.text((self.width/2-25,self.height/2), '%.2f' % round(float(self.decay),3),
-                        font=self.font, fill=1)
-        
-        
-
-    def roomAdd(self, schedule):
-        # Add an event
-        self.draw.text((1, self.height/2), 'ADDING', font=self.font, fill=1)
-
-
-    
-                
-
-
-##        while event != ord('q'):
-##        scr = curses.initscr()    
-##        scr.clear()
-##        scr.border(0)
-##        curses.echo()
-##        #curses.curs_set(0)
-##        scr.keypad(1)
-##            
-##        scr.addstr(5, 1, "Ask")
-##        scr.addstr(5, 1, "AAsk")
-##        event = scr.getkey()
-##
-##        scr.clear()
-##        scr.addstr(5, 1, "Quit")
-##        event = 0
-##        while event != ord('4'):
-##            scr.addstr("Enter current time >")
-##            scr.addstr("!")
-##            scr.refresh()
-##            event = scr.getch()
-##            
-##            if event == ord('q'):
-##                curses.endwin()
-##                scr.addstr(5, 1, "Quit")
-##                break
-##            elif event == curses.KEY_DOWN:
-##                break
-##            elif event == ord('5'):
-##                scr.clear()
-##                scr.addstr(4, 1, "Pressed 5")                
-##                curses.endwin()
-##                
-##            scr.addstr("<")
-##            scr.refresh()
-##        curses.nocbreak()
-##        scr.keypad(False)
-##        curses.echo()
-##        curses.endwin()
-
-  
-##
-##    def roomDel():
-##        #
 
 ##
 ##
