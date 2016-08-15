@@ -69,8 +69,9 @@ def test_rooms():
     display.tabs()
     display.update()
 
-    display.startRooms()
-  
+##    display.startRooms()
+    d = Process(target=display.startRooms(), args=())
+    d.start()  
     
     
 

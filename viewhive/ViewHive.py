@@ -26,5 +26,17 @@ except:
     print('Unexpected error: %s'%sys.exc_info()[0])
 
 
-recorder.start()
+
+display.mode = 'VIEW'
+display.clear()
+display.tabs()
+display.eventsBar()
+display.update()
+
+
+r = Process(target=recorder.record(), args=())
+r.start()
+print('After recording started, this')
+
+r.join()
 

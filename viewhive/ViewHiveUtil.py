@@ -5,7 +5,7 @@ from PIL import ImageFont
 from picamera import PiCamera, Color
 import time
 from datetime import datetime as dt
-import multiprocessing
+from multiprocessing import Process
 import subprocess
 import sys
 import shutil
@@ -14,9 +14,7 @@ import curses
 import Adafruit_SSD1306
 import Adafruit_GPIO.SPI as SPI 
 
-#def recordNow():
-    #
-    
+
 def now():
     # Return current time and date as a string
     return dt.now().strftime("%Y-%m-%d_%H.%M.%S")
@@ -72,7 +70,7 @@ class Recorder(object):
         print('*** Active on %s***\n' % self.timestamp)
 
 
-    def start(self):
+    def record(self):
         # Wait for USB drive named VIEWHIVE
         waitforUSB(self.usbname)
 
