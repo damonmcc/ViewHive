@@ -6,11 +6,9 @@ def test_schedule():
     bees = Schedule("Bees", "ScriptUTIL.wpi")
     assert_equal(bees.name, "Bees")
     assert_equal(bees.file.name, "ScriptUTIL.wpi")
-    assert_equal(bees.events, [])
     
 def test_schedule_read():
     old = Schedule("Old", "ScriptUTIL.wpi")
-    old.WpiToEvents()
     assert_equal(old.events[0]['start'], 200)
     old.showEvents()
 
@@ -20,7 +18,6 @@ def test_display():
 
 def test_events():
     bees = Schedule("Bees", "ScriptUTIL.wpi")
-    bees.WpiToEvents()
     
     display = Display(bees)
     display.eventsBar()
@@ -29,7 +26,6 @@ def test_events():
 
 def test_tabs():
     bees = Schedule("Bees", "ScriptUTIL.wpi")
-    bees.WpiToEvents()
     
     display = Display(bees)
     display.eventsBar()
@@ -52,7 +48,6 @@ def test_tabs():
 
 def test_rooms():
     bees = Schedule("Bees", "ScriptUTIL.wpi")
-    bees.WpiToEvents()
 
     display = Display(bees)
     display.mode = 'BLAH'   # enter a random mode
