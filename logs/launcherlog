@@ -1225,3 +1225,492 @@ Schedule next startup at:  2016-08-14 01:00:00
 ---------------------------------------------------
 
 Waiting for /media/pi/BEEVIDS/ USB...
+‘./ScriptUTIL.wpi’ -> ‘/home/wittyPi/schedules/HVScriptIMPORT.wpi’
+‘./ScriptUTIL.wpi’ -> ‘/home/wittyPi/schedule.wpi’
+*** Active on 2016-08-14_23.15.00***
+
+(0, ' ', '# HiveView generated schedule v1.1')
+(1, ' ', '# Turn on 30 minutes before sunrise and sunset everyday')
+(2, ' ', '#\t05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016')
+(3, ' ', '#')
+(4, ' ', '# Recording length in comments')
+(5, ' ', '')
+(6, ' ', 'BEGIN\t2015-08-01 00:00:00')
+(7, ' ', 'END\t2025-07-31 23:59:59')
+(8, ' ', ['ON', 'H1 M59', 'WAIT']) ON Gap ending at 200, not recording
+(9, ' ', ['OFF', 'M1']) (10, ' ', ['ON', 'H11 M59', 'WAIT', '#H3 M30']) All events:
+From 0200 to 0530
+
+
+(11, ' ', ['OFF', 'M1']) (12, ' ', ['ON', 'H9 M59', 'WAIT', '#H3 M99']) All events:
+From 0200 to 0530
+From 1400 to 1799
+
+
+Event 0: 0200 to 0530
+First event ... Adding morning buffer ... : timeS: 200 curTime: 0
+: timeS: 1200 curTime: 200
+: timeS: 330 curTime: 200
+Event 1: 1400 to 1799
+Last (only?) event ... : timeS: 1000 curTime: 1400
+: timeS: 399 curTime: 1400
+(1400, ' + ', 1000, ' should be 2400!')
+Schedule's current content:
+# HiveView generated schedule v1.1
+# Turn on 30 minutes before sunrise and sunset everyday
+#	05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016
+#
+# Recording length in comments
+
+BEGIN	2015-08-01 00:00:00
+END	2025-07-31 23:59:59
+ON	H1 M59	WAIT
+OFF	M1
+ON	H11 M59	WAIT	#H3 M30
+OFF	M1
+ON	H9 M59	WAIT	#H3 M99
+Schedule source overwritten ...
+Schedule files copied ...
+--------------- 2016-08-14 23:15:01 ---------------
+Skip scheduling next shutdown, which should be done externally.
+Schedule next startup at:  2016-08-15 07:40:00
+---------------------------------------------------
+
+Ran wittyPi runScript.sh ...
+All events:
+From 0200 to 0530
+From 1400 to 1799
+
+
+Display instance starting...
+...
+....
+.....
+Display started
+Welcome started
+Display set!!!
+Looking for USB drive named VIEWHIVE...
+VIEWHIVE detected at /media/pi/VIEWHIVE/ !
+Recording started at 2016-08-14_23.15.05 ...
+MP4Box -add 2016-08-14_23.15.05.h264 2016-08-14_23.15.05.mp4
+*** Conversion complete ***
+('*** Deleted: ', '/home/pi/Videos/2016-08-14_23.15.05.h264')
+('*** Deleted: ', '/media/pi/VIEWHIVE/2016-08-14_23.15.05.h264')
+/media/pi/VIEWHIVE/ contains:
+2016-08-14_14.13.07.mp4
+2016-08-14_14.27.47.mp4
+2016-08-14_14.29.26.mp4
+2016-08-14_14.37.14.mp4
+2016-08-14_14.41.14.mp4
+2016-08-14_15.51.17.mp4
+2016-08-14_15.52.04.mp4
+2016-08-14_21.05.12.mp4
+2016-08-14_21.17.06.h264
+2016-08-14_21.32.25.h264
+2016-08-14_21.34.09.h264
+2016-08-14_21.43.24.h264
+2016-08-14_21.51.58.h264
+2016-08-14_22.33.10.mp4
+2016-08-14_22.46.25.mp4
+2016-08-14_22.47.56.mp4
+2016-08-14_22.56.16.mp4
+2016-08-14_22.56.53.mp4
+2016-08-14_23.05.18.mp4
+2016-08-14_23.15.05.mp4
+System Volume Information
+After recording started, this
+‘./ScriptUTIL.wpi’ -> ‘/home/wittyPi/schedules/HVScriptIMPORT.wpi’
+‘./ScriptUTIL.wpi’ -> ‘/home/wittyPi/schedule.wpi’
+*** Active on 2016-08-14_23.16.57***
+
+(0, ' ', '# HiveView generated schedule v1.1')
+(1, ' ', '# Turn on 30 minutes before sunrise and sunset everyday')
+(2, ' ', '#\t05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016')
+(3, ' ', '#')
+(4, ' ', '# Recording length in comments')
+(5, ' ', '')
+(6, ' ', 'BEGIN\t2015-08-01 00:00:00')
+(7, ' ', 'END\t2025-07-31 23:59:59')
+(8, ' ', ['ON', 'H1 M59', 'WAIT']) ON Gap ending at 200, not recording
+(9, ' ', ['OFF', 'M1']) (10, ' ', ['ON', 'H11 M59', 'WAIT', '#H3 M30']) All events:
+From 0200 to 0530
+
+
+(11, ' ', ['OFF', 'M1']) (12, ' ', ['ON', 'H9 M59', 'WAIT', '#H3 M99']) All events:
+From 0200 to 0530
+From 1400 to 1799
+
+
+Event 0: 0200 to 0530
+First event ... Adding morning buffer ... : timeS: 200 curTime: 0
+: timeS: 1200 curTime: 200
+: timeS: 330 curTime: 200
+Event 1: 1400 to 1799
+Last (only?) event ... : timeS: 1000 curTime: 1400
+: timeS: 399 curTime: 1400
+(1400, ' + ', 1000, ' should be 2400!')
+Schedule's current content:
+# HiveView generated schedule v1.1
+# Turn on 30 minutes before sunrise and sunset everyday
+#	05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016
+#
+# Recording length in comments
+
+BEGIN	2015-08-01 00:00:00
+END	2025-07-31 23:59:59
+ON	H1 M59	WAIT
+OFF	M1
+ON	H11 M59	WAIT	#H3 M30
+OFF	M1
+ON	H9 M59	WAIT	#H3 M99
+Schedule source overwritten ...
+Schedule files copied ...
+--------------- 2016-08-14 23:17:20 ---------------
+Skip scheduling next shutdown, which should be done externally.
+Schedule next startup at:  2016-08-15 07:40:00
+---------------------------------------------------
+
+Ran wittyPi runScript.sh ...
+All events:
+From 0200 to 0530
+From 1400 to 1799
+
+
+Display instance starting...
+...
+....
+.....
+Display started
+Welcome started
+Display set!!!
+Looking for USB drive named VIEWHIVE...
+VIEWHIVE detected at /media/pi/VIEWHIVE/ !
+Recording started at 2016-08-14_23.17.23 ...
+MP4Box -add 2016-08-14_23.17.23.h264 2016-08-14_23.17.23.mp4
+*** Conversion complete ***
+('*** Deleted: ', '/home/pi/Videos/2016-08-14_23.17.23.h264')
+('*** Deleted: ', '/media/pi/VIEWHIVE/2016-08-14_23.17.23.h264')
+/media/pi/VIEWHIVE/ contains:
+2016-08-14_23.17.23.mp4
+System Volume Information
+After recording started, this
+‘./ScriptUTIL.wpi’ -> ‘/home/wittyPi/schedules/HVScriptIMPORT.wpi’
+‘./ScriptUTIL.wpi’ -> ‘/home/wittyPi/schedule.wpi’
+*** Active on 2016-08-14_23.20.12***
+
+(0, ' ', '# HiveView generated schedule v1.1')
+(1, ' ', '# Turn on 30 minutes before sunrise and sunset everyday')
+(2, ' ', '#\t05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016')
+(3, ' ', '#')
+(4, ' ', '# Recording length in comments')
+(5, ' ', '')
+(6, ' ', 'BEGIN\t2015-08-01 00:00:00')
+(7, ' ', 'END\t2025-07-31 23:59:59')
+(8, ' ', ['ON', 'H1 M59', 'WAIT']) ON Gap ending at 200, not recording
+(9, ' ', ['OFF', 'M1']) (10, ' ', ['ON', 'H11 M59', 'WAIT', '#H3 M30']) All events:
+From 0200 to 0530
+
+
+(11, ' ', ['OFF', 'M1']) (12, ' ', ['ON', 'H9 M59', 'WAIT', '#H3 M99']) All events:
+From 0200 to 0530
+From 1400 to 1799
+
+
+Event 0: 0200 to 0530
+First event ... Adding morning buffer ... : timeS: 200 curTime: 0
+: timeS: 1200 curTime: 200
+: timeS: 330 curTime: 200
+Event 1: 1400 to 1799
+Last (only?) event ... : timeS: 1000 curTime: 1400
+: timeS: 399 curTime: 1400
+(1400, ' + ', 1000, ' should be 2400!')
+Schedule's current content:
+# HiveView generated schedule v1.1
+# Turn on 30 minutes before sunrise and sunset everyday
+#	05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016
+#
+# Recording length in comments
+
+BEGIN	2015-08-01 00:00:00
+END	2025-07-31 23:59:59
+ON	H1 M59	WAIT
+OFF	M1
+ON	H11 M59	WAIT	#H3 M30
+OFF	M1
+ON	H9 M59	WAIT	#H3 M99
+Schedule source overwritten ...
+Schedule files copied ...
+--------------- 2016-08-14 23:20:13 ---------------
+Skip scheduling next shutdown, which should be done externally.
+Schedule next startup at:  2016-08-15 07:40:00
+---------------------------------------------------
+
+Ran wittyPi runScript.sh ...
+All events:
+From 0200 to 0530
+From 1400 to 1799
+
+
+Display instance starting...
+...
+....
+.....
+Display started
+Welcome started
+Display set!!!
+‘./ScriptUTIL.wpi’ -> ‘/home/wittyPi/schedules/HVScriptIMPORT.wpi’
+‘./ScriptUTIL.wpi’ -> ‘/home/wittyPi/schedule.wpi’
+*** Active on 2016-08-14_23.23.23***
+
+(0, ' ', '# HiveView generated schedule v1.1')
+(1, ' ', '# Turn on 30 minutes before sunrise and sunset everyday')
+(2, ' ', '#\t05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016')
+(3, ' ', '#')
+(4, ' ', '# Recording length in comments')
+(5, ' ', '')
+(6, ' ', 'BEGIN\t2015-08-01 00:00:00')
+(7, ' ', 'END\t2025-07-31 23:59:59')
+(8, ' ', ['ON', 'H1 M59', 'WAIT']) ON Gap ending at 200, not recording
+(9, ' ', ['OFF', 'M1']) (10, ' ', ['ON', 'H11 M59', 'WAIT', '#H3 M30']) All events:
+From 0200 to 0530
+
+
+(11, ' ', ['OFF', 'M1']) (12, ' ', ['ON', 'H9 M59', 'WAIT', '#H3 M99']) All events:
+From 0200 to 0530
+From 1400 to 1799
+
+
+Event 0: 0200 to 0530
+First event ... Adding morning buffer ... : timeS: 200 curTime: 0
+: timeS: 1200 curTime: 200
+: timeS: 330 curTime: 200
+Event 1: 1400 to 1799
+Last (only?) event ... : timeS: 1000 curTime: 1400
+: timeS: 399 curTime: 1400
+(1400, ' + ', 1000, ' should be 2400!')
+Schedule's current content:
+# HiveView generated schedule v1.1
+# Turn on 30 minutes before sunrise and sunset everyday
+#	05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016
+#
+# Recording length in comments
+
+BEGIN	2015-08-01 00:00:00
+END	2025-07-31 23:59:59
+ON	H1 M59	WAIT
+OFF	M1
+ON	H11 M59	WAIT	#H3 M30
+OFF	M1
+ON	H9 M59	WAIT	#H3 M99
+Schedule source overwritten ...
+Schedule files copied ...
+--------------- 2016-08-14 23:23:23 ---------------
+Skip scheduling next shutdown, which should be done externally.
+Schedule next startup at:  2016-08-15 07:40:00
+---------------------------------------------------
+
+Ran wittyPi runScript.sh ...
+All events:
+From 0200 to 0530
+From 1400 to 1799
+
+
+Display instance starting...
+...
+....
+.....
+Display started
+Welcome started
+Display set!!!
+‘./ScriptUTIL.wpi’ -> ‘/home/wittyPi/schedules/HVScriptIMPORT.wpi’
+‘./ScriptUTIL.wpi’ -> ‘/home/wittyPi/schedule.wpi’
+*** Active on 2016-08-16_20.23.14***
+
+(0, ' ', '# HiveView generated schedule v1.1')
+(1, ' ', '# Turn on 30 minutes before sunrise and sunset everyday')
+(2, ' ', '#\t05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016')
+(3, ' ', '#')
+(4, ' ', '# Recording length in comments')
+(5, ' ', '')
+(6, ' ', 'BEGIN\t2015-08-01 00:00:00')
+(7, ' ', 'END\t2025-07-31 23:59:59')
+(8, ' ', ['ON', 'H1 M59', 'WAIT']) ON Gap ending at 200, not recording
+(9, ' ', ['OFF', 'M1']) (10, ' ', ['ON', 'H11 M59', 'WAIT', '#H3 M30']) All events:
+From 0200 to 0530
+
+
+(11, ' ', ['OFF', 'M1']) (12, ' ', ['ON', 'H9 M59', 'WAIT', '#H3 M99']) All events:
+From 0200 to 0530
+From 1400 to 1799
+
+
+Event 0: 0200 to 0530
+First event ... Adding morning buffer ... : timeS: 200 curTime: 0
+: timeS: 1200 curTime: 200
+: timeS: 330 curTime: 200
+Event 1: 1400 to 1799
+Last (only?) event ... : timeS: 1000 curTime: 1400
+: timeS: 399 curTime: 1400
+(1400, ' + ', 1000, ' should be 2400!')
+Schedule's current content:
+# HiveView generated schedule v1.1
+# Turn on 30 minutes before sunrise and sunset everyday
+#	05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016
+#
+# Recording length in comments
+
+BEGIN	2015-08-01 00:00:00
+END	2025-07-31 23:59:59
+ON	H1 M59	WAIT
+OFF	M1
+ON	H11 M59	WAIT	#H3 M30
+OFF	M1
+ON	H9 M59	WAIT	#H3 M99
+Schedule source overwritten ...
+Schedule files copied ...
+--------------- 2016-08-16 20:23:15 ---------------
+Skip scheduling next shutdown, which should be done externally.
+Schedule next startup at:  2016-08-17 07:38:00
+---------------------------------------------------
+
+Ran wittyPi runScript.sh ...
+All events:
+From 0200 to 0530
+From 1400 to 1799
+
+
+Display instance starting...
+...
+....
+.....
+Display started
+Welcome started
+Display set!!!
+‘./ScriptUTIL.wpi’ -> ‘/home/wittyPi/schedules/HVScriptIMPORT.wpi’
+‘./ScriptUTIL.wpi’ -> ‘/home/wittyPi/schedule.wpi’
+*** Active on 2016-08-16_21.33.42***
+
+(0, ' ', '# HiveView generated schedule v1.1')
+(1, ' ', '# Turn on 30 minutes before sunrise and sunset everyday')
+(2, ' ', '#\t05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016')
+(3, ' ', '#')
+(4, ' ', '# Recording length in comments')
+(5, ' ', '')
+(6, ' ', 'BEGIN\t2015-08-01 00:00:00')
+(7, ' ', 'END\t2025-07-31 23:59:59')
+(8, ' ', ['ON', 'H1 M59', 'WAIT']) ON Gap ending at 200, not recording
+(9, ' ', ['OFF', 'M1']) (10, ' ', ['ON', 'H11 M59', 'WAIT', '#H3 M30']) All events:
+From 0200 to 0530
+
+
+(11, ' ', ['OFF', 'M1']) (12, ' ', ['ON', 'H9 M59', 'WAIT', '#H3 M99']) All events:
+From 0200 to 0530
+From 1400 to 1799
+
+
+Event 0: 0200 to 0530
+First event ... Adding morning buffer ... : timeS: 200 curTime: 0
+: timeS: 1200 curTime: 200
+: timeS: 330 curTime: 200
+Event 1: 1400 to 1799
+Last (only?) event ... : timeS: 1000 curTime: 1400
+: timeS: 399 curTime: 1400
+(1400, ' + ', 1000, ' should be 2400!')
+Schedule's current content:
+# HiveView generated schedule v1.1
+# Turn on 30 minutes before sunrise and sunset everyday
+#	05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016
+#
+# Recording length in comments
+
+BEGIN	2015-08-01 00:00:00
+END	2025-07-31 23:59:59
+ON	H1 M59	WAIT
+OFF	M1
+ON	H11 M59	WAIT	#H3 M30
+OFF	M1
+ON	H9 M59	WAIT	#H3 M99
+Schedule source overwritten ...
+Schedule files copied ...
+--------------- 2016-08-16 21:34:05 ---------------
+Skip scheduling next shutdown, which should be done externally.
+Schedule next startup at:  2016-08-17 07:38:00
+---------------------------------------------------
+
+Ran wittyPi runScript.sh ...
+All events:
+From 0200 to 0530
+From 1400 to 1799
+
+
+Display instance starting...
+...
+....
+.....
+Display started
+Welcome started
+Display set!!!
+‘./ScriptUTIL.wpi’ -> ‘/home/wittyPi/schedules/HVScriptIMPORT.wpi’
+‘./ScriptUTIL.wpi’ -> ‘/home/wittyPi/schedule.wpi’
+*** Active on 2016-08-16_22.15.55***
+
+(0, ' ', '# HiveView generated schedule v1.1')
+(1, ' ', '# Turn on 30 minutes before sunrise and sunset everyday')
+(2, ' ', '#\t05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016')
+(3, ' ', '#')
+(4, ' ', '# Recording length in comments')
+(5, ' ', '')
+(6, ' ', 'BEGIN\t2015-08-01 00:00:00')
+(7, ' ', 'END\t2025-07-31 23:59:59')
+(8, ' ', ['ON', 'H1 M59', 'WAIT']) ON Gap ending at 200, not recording
+(9, ' ', ['OFF', 'M1']) (10, ' ', ['ON', 'H11 M59', 'WAIT', '#H3 M30']) All events:
+From 0200 to 0530
+
+
+(11, ' ', ['OFF', 'M1']) (12, ' ', ['ON', 'H9 M59', 'WAIT', '#H3 M99']) All events:
+From 0200 to 0530
+From 1400 to 1799
+
+
+Event 0: 0200 to 0530
+First event ... Adding morning buffer ... : timeS: 200 curTime: 0
+: timeS: 1200 curTime: 200
+: timeS: 330 curTime: 200
+Event 1: 1400 to 1799
+Last (only?) event ... : timeS: 1000 curTime: 1400
+: timeS: 399 curTime: 1400
+(1400, ' + ', 1000, ' should be 2400!')
+Schedule's current content:
+# HiveView generated schedule v1.1
+# Turn on 30 minutes before sunrise and sunset everyday
+#	05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016
+#
+# Recording length in comments
+
+BEGIN	2015-08-01 00:00:00
+END	2025-07-31 23:59:59
+ON	H1 M59	WAIT
+OFF	M1
+ON	H11 M59	WAIT	#H3 M30
+OFF	M1
+ON	H9 M59	WAIT	#H3 M99
+Schedule source overwritten ...
+Schedule files copied ...
+--------------- 2016-08-16 22:15:56 ---------------
+Skip scheduling next shutdown, which should be done externally.
+Schedule next startup at:  2016-08-17 07:38:00
+---------------------------------------------------
+
+Ran wittyPi runScript.sh ...
+All events:
+From 0200 to 0530
+From 1400 to 1799
+
+
+Display instance starting...
+...
+....
+.....
+Display started
+Welcome started
+Display set!!!

@@ -1,5 +1,4 @@
-# HiveView generated schedule
-# v1.0
+# HiveView generated schedule v1.1
 # Turn on 30 minutes before sunrise and sunset everyday
 #	05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016
 #
@@ -11,4 +10,4 @@ ON	H1 M59	WAIT
 OFF	M1
 ON	H11 M59	WAIT	#H3 M30
 OFF	M1
-ON	H9 M59	WAIT	#H4
+ON	H9 M59	WAIT	#H4 M00

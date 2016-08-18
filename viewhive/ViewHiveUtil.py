@@ -66,11 +66,61 @@ class Recorder(object):
         self.srcroot = ''
         self.convCommand = ''
         #####        
-        self.camera.start_preview(alpha=100)
-        print('*** Active on %s***\n' % self.timestamp)
+        self.camera.start_preview(alpha=50)
+        print('*** Recorder born %s***\n' % self.timestamp)
+        self.camera.led = False
+        self.isActive  = False
 
 
+    def start(self):
+        # Wait for USB drive named VIEWHIVE
+        waitforUSB(self.usbname)
+        # Name files with current timestamp
+        self.timestamp = now()
+        self.srcfile = '%s.h264' % self.timestamp
+        self.srcroot = '/home/pi/Videos/%s' % self.srcfile
+        self.convCommand = 'MP4Box -add {0}.h264 {1}.mp4'.format(self.timestamp,self.timestamp)
+
+        print("Recording started at %s ..."% self.timestamp)
+        self.camera.start_recording(self.srcroot, format='h264')
+        self.camera.led = False
+        self.isActive = True
+        self.camera.start_preview(alpha=150)
+
+
+    def stop(self):
+        self.camera.annotate_text = "{0}, DONE".format(now())
+        self.camera.wait_recording(1)
+        self.camera.stop_recording()
+        shutil.copy(self.srcroot, self.dstroot)
+        print(self.convCommand)
+        conv = subprocess.Popen(self.convCommand, shell=True,
+                            cwd=self.dstroot)
+        conv_status = conv.wait()
+        if conv_status==0:
+            print ("*** Conversion complete ***")
+        else:
+            print ("**! Conversion FAILED !**")
+        self.camera.led = False
+
+        silentremove(self.srcroot)
+        silentremove("{0}{1}.h264".format(self.dstroot,self.timestamp))
+        print("{0} contains:".format(self.dstroot))
+        p = subprocess.Popen("ls", shell=True,
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                             cwd=self.dstroot)
+        p_status = p.wait()
+        for line in iter(p.stdout.readline, b''):
+            print (line),
+        self.camera.stop_preview()
+        self.camera.led = False
+        self.isActive = False
+        print("Recording stopped at %s ..."% now())
+
+
+        
     def record(self):
+        # OLD standalone recording behavior
         # Wait for USB drive named VIEWHIVE
         waitforUSB(self.usbname)
 
@@ -112,7 +162,7 @@ class Recorder(object):
             print (line),
         self.camera.stop_preview()
         self.camera.led = True
-        time.sleep(2)
+        time.sleep(1)
         self.camera.close()
         #
         #
@@ -188,7 +238,7 @@ class Schedule(object):
             # ON    H1 M59  WAIT
             # OFF   M1
             # ON    H22  WAIT    #H1
-        # converts the event list to wpi format and store in self.content
+        # converts the event list to wpi format and stores in self.content
         self.content = ''
         header ='''# HiveView generated schedule v1.1
 # Turn on 30 minutes before sunrise and sunset everyday
@@ -202,6 +252,7 @@ END	2025-07-31 23:59:59'''
         i = 0
         curTime = 0
         def code(time, **k_parems):
+            # Convert a 2400 style time to wittyPi's H__ M__ format
             h = ''
             m = ''
             
@@ -284,7 +335,7 @@ END	2025-07-31 23:59:59'''
         curLength = 0
 
         # converts the wpi time codes to 0000 formatted time int
-        def time(code):
+        def time(code, event):
             code0000 = 0000
             if(' ' not in code): # if the command has 1 number
                 if(code[0] == 'H'):
@@ -297,7 +348,10 @@ END	2025-07-31 23:59:59'''
             elif(' ' in curCommand[1]):   # Hour and minute present
                 splitCode = code.split(' ')
                 hours = int(splitCode[0][1:len(splitCode[0])])*100
-                mins = int(splitCode[1][1:len(splitCode[1])])+1
+                if(event == True):
+                    mins = int(splitCode[1][1:len(splitCode[1])])
+                else:
+                    mins = int(splitCode[1][1:len(splitCode[1])])+1
                 if(mins > 59): mins = 100
                 code0000+= hours
                 code0000+= mins
@@ -322,20 +376,19 @@ END	2025-07-31 23:59:59'''
             if(curType == 'ON'):
                 #   If theres a recording length comment
                 if('#' in curCommand[len(curCommand)-1]):
-                    curTime+= time(curCommand[1])
+                    curTime+= time(curCommand[1], False)
                     comment = curCommand[len(curCommand)-1].split('#')
                     
-                    tempEvent['length'] = time(comment[1])-1
+                    tempEvent['length'] = time(comment[1], True)
 ##                    print("Length is %d"%tempEvent['length']),
 ##                    tempEvent['end'] = tempEvent['start']+time(comment[1])-1
                     self.events.append(tempEvent)
-                    self.ED = SortedDict(self.events)
                     self.showEvents()
                     tempEvent = self.clearEvent()
                     i+=1
                 #   Otherwise this is a gap without recording length
                 else:
-                    curTime+= time(curCommand[1])
+                    curTime+= time(curCommand[1], False)
                     tempEvent = self.clearEvent()
                     print("ON Gap ending at %d, not recording"% curTime)
                     i+=1
@@ -456,7 +509,7 @@ END	2025-07-31 23:59:59'''
 
 def nav(screen):
     screen.addstr(8,8,"Surfin >")
-    start = 30000
+    start = 15000
     # 10000 tics ~= 6.5 seconds
     tic = start
     screen.keypad(1)
@@ -592,7 +645,7 @@ def getTime(screen):
 
 
 class Display(object):
-    def __init__(self, sch):
+    def __init__(self, **k_parems):
         print('Display instance starting...')
         RST = 24
         DC = 23
@@ -602,17 +655,24 @@ class Display(object):
         self.width = self.disp.width
         self.height = self.disp.height
         self.font = ImageFont.truetype("GameCube.ttf", 7)
-        if sch == 0:
-            self.schedule = []
-        else:
-            self.schedule = sch
-##            self.events = sch.events
-
         
+        if 'schedule' in k_parems:
+            # If the assigned schedule is listed...
+            self.schedule = k_parems['schedule']
+        else:
+            self.schedule = []
+
+        if 'cam' in k_parems and k_parems['cam'] == True:
+            # If the assigned camera is listed...          
+            recorder = Recorder()
+            self.cam = recorder
+        else:
+            self.recorder = []
         print('...')
         self.mode = -1
         self.fresh = True
-        self.start = 30
+        
+        self.start = 15
         # length of decay countdowm
         self.decay = self.start
         # initialize decay countdown
@@ -662,12 +722,13 @@ class Display(object):
 
 
     def startRooms(self):
-##        self.clear()
-##        self.mode = 'TIME'
-##        self.tabs()
-##        self.update()
+        ### Main interaction code
+
         recRes = 0.01
-        while self.decay>0:
+##        self.cam.start()
+        self.cam.camera.led = False
+        while self.decay>0:   
+            
             if(self.mode == 'TIME'): 
                 com = curses.wrapper(navDecay)
             else: com = curses.wrapper(nav)
@@ -692,14 +753,20 @@ class Display(object):
                 elif(self.mode == 'DEL'): self.mode = 'TIME'
                 elif(self.mode == 'TIME'): self.mode = 'VIEW'
                 self.fresh = True
-                self.decay = self.start
 
             
-            elif(com == 'P' or com == 'ENT'):
+            elif(com == 'ENT'):
                  if(self.mode == 'TIME' or self.mode == 'ADD'): i = -1
                  self.fresh = False
                  
-            elif (com == 0 and self.mode == 'DEL'): i = -1
+            elif(com == 'P'):
+                if(self.mode == 'ADD'): i = -1
+                if(self.mode == 'TIME'): i = -2
+                self.decay = self.start
+                self.fresh = False
+                 
+            elif (com == 0 and self.mode == 'DEL'):
+                i = -1
             elif (com == 1 and self.mode == 'ADD'): i = -1
             
             # Interpret Left and Right commands
@@ -740,6 +807,14 @@ class Display(object):
         # Decay is complete, SHUTDOWN
         self.mode = 'KILL'
         self.tabs()
+        self.showRoom(self.mode, i)
+        self.update()
+        
+        self.cam.stop
+        
+        self.mode = 'TIME'
+        self.tabs()
+        self.showRoom(self.mode, i)
         self.update()
 
     def showRoom(self, mode, i):
@@ -816,15 +891,39 @@ class Display(object):
             self.draw.text((3 ,self.height/2), 'Give cur. time:',
                        font=self.font, fill=1)
             
-            time = curses.wrapper(getTime)
+            newtime = curses.wrapper(getTime)
             # Clear image buffer by drawing a black filled box.
             self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-            self.draw.text((3 ,self.height/2), '%d' % time,
+            self.draw.text((3 ,self.height/2), '%d' % newtime,
                        font=self.font, fill=1)
             self.fresh = True
+        if(i == -2):    # Manually start a recording
+            self.draw.text((2, self.height/2), "Record NOW??",
+                           font=self.font, fill=1)
+            self.update()
+            answer = curses.wrapper(getConfirm)
+            
+            self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+            if answer == True :
+                self.cam.start()
+                self.draw.text((2, self.height/2), "Recording...",
+                           font=self.font, fill=1)            
+                self.update()
+                time.sleep(2)
+                i = 0
+            else:
+                self.draw.text((self.width/2-28, self.height/2), "Canceled",
+                           font=self.font, fill=1)
+            self.update()
+            time.sleep(2)
+            self.fresh = True
         else:   # Show current time in tabs and decay coutdown
-            time = nowt()
-            self.draw.text((self.width/2-50,self.height/2), 'Shutdown in  %.2f' % round(float(self.decay),3),
+            newtime = nowt()
+            if(self.cam.isActive==True):
+                self.draw.text((self.width/2-50,self.height/2), 'Sleep in  %.2f' % round(float(self.decay),3),
+                        font=self.font, fill=1)
+            else:
+                self.draw.text((self.width/2-50,self.height/2), 'Shutdown in  %.2f' % round(float(self.decay),3),
                         font=self.font, fill=1)
             self.fresh = True 
         
@@ -895,7 +994,7 @@ class Display(object):
     def eventsBar(self):
         i=0     #   1440 minutes in a day
         # Clear bar buffer by drawing a black filled box.
-        self.draw.rectangle((0,28,self.width,self.height), outline=0, fill=0)
+        #self.draw.rectangle((0,28,self.width,self.height), outline=0, fill=0)
         while(i<=1440):
             x = ((self.width-3)*(i/1440))
             if(i%720 == 0):

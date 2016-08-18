@@ -13,13 +13,13 @@ def test_schedule_read():
     old.showEvents()
 
 def test_display():
-    display = Display(0)
+    display = Display()
     display.welcome()
 
 def test_events():
     bees = Schedule("Bees", "ScriptUTIL.wpi")
     
-    display = Display(bees)
+    display = Display(schedule = bees)
     display.eventsBar()
     display.update()
     time.sleep(0.3)
@@ -27,7 +27,7 @@ def test_events():
 def test_tabs():
     bees = Schedule("Bees", "ScriptUTIL.wpi")
     
-    display = Display(bees)
+    display = Display(schedule = bees)
     display.eventsBar()
     display.mode = 'VIEW'
     display.tabs()
@@ -49,15 +49,14 @@ def test_tabs():
 def test_rooms():
     bees = Schedule("Bees", "ScriptUTIL.wpi")
 
-    display = Display(bees)
+    display = Display(schedule = bees)
     display.mode = 'BLAH'   # enter a random mode
     display.tabs()
     display.roomMain()      # show main room
     display.update()
-    time.sleep(2)
+    time.sleep(1)
     
     display.mode = 'VIEW'
-
     display.clear()
     display.tabs()
     display.eventsBar()
@@ -68,10 +67,35 @@ def test_rooms():
     display.mode = 'ADD'
     display.tabs()
     display.update()
+    time.sleep(1)
 
-##    display.startRooms()
-    d = Process(target=display.startRooms(), args=())
-    d.start()  
+    display.clear()
+    display.mode = 'DEL'
+    display.tabs()
+    display.update()
+    time.sleep(1)
+    
+    display.clear()
+    display.mode = 'TIME'
+    display.tabs()
+    display.update()
+    time.sleep(1)
+    display.clear()
+    display.mode = 'MEH'
+    display.tabs()
+    display.update()
+    time.sleep(2)
+
+def test_recording():
+    bees = Schedule("Bees", "ScriptUTIL.wpi")
+    display = Display(schedule = bees, cam = True   )
+    display.mode = 'VIEW'
+    display.clear()
+    display.tabs()
+    display.eventsBar()
+    display.update()
+    time.sleep(2)
+    display.startRooms()
     
     
 

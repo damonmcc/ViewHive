@@ -17,8 +17,8 @@ try:
     print('Welcome started')
 
     display.clear()
-    display.eventsBar()
     display.tabs()
+    display.eventsBar()
     display.update()
     print('Display set!!!')
 except:
@@ -26,17 +26,22 @@ except:
     print('Unexpected error: %s'%sys.exc_info()[0])
 
 
-
+##display.mode = 'VIEW'
 display.mode = 'VIEW'
+
 display.clear()
 display.tabs()
 display.eventsBar()
 display.update()
+time.sleep(2)
 
+display.clear()
+display.mode = 'ADD'
+display.tabs()
+display.update()
 
-r = Process(target=recorder.record(), args=())
-r.start()
+display.startRooms()
+
+##recorder.record()
 print('After recording started, this')
-
-r.join()
 
