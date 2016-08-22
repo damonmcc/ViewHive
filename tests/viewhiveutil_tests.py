@@ -98,9 +98,6 @@ def test_recording():
     display.startRooms()
     
     
-
-
-##
 ##def test_map():
 ##    start = Room("Start", "You can go west and down a hole.")
 ##    west = Room("Trees", "There are trees here, you can go east.")

@@ -23,7 +23,7 @@ def nowt():
     return dt.now().strftime("%H:%M")
 def nowti():
     # Return current time as an int
-    return (dt.now().strftime("%H%M"))
+    return int(dt.now().strftime("%H%M"))
 def waitforUSB(drivename):
     print("Looking for USB drive named %s..."% drivename)
     path = '/media/pi/'+drivename+'/'
@@ -51,7 +51,7 @@ class Recorder(object):
         #camera.framerate = 49
         self.camera.annotate_background = Color('grey')
         self.camera.annotate_foreground = Color('purple')
-        time.sleep(5)
+
         self.timestamp = now()
         self.recRes = 0.01 # resolution of elapsed time counter (seconds)
         #####
@@ -66,10 +66,9 @@ class Recorder(object):
         self.srcroot = ''
         self.convCommand = ''
         #####        
-        self.camera.start_preview(alpha=50)
         print('*** Recorder born %s***\n' % self.timestamp)
-        self.camera.led = False
-        self.isActive  = False
+
+        #self.camera.led = False
 
 
     def start(self):
@@ -81,11 +80,11 @@ class Recorder(object):
         self.srcroot = '/home/pi/Videos/%s' % self.srcfile
         self.convCommand = 'MP4Box -add {0}.h264 {1}.mp4'.format(self.timestamp,self.timestamp)
 
-        print("Recording started at %s ..."% self.timestamp)
+        print("*** Recording started at %s ..."% self.timestamp)
         self.camera.start_recording(self.srcroot, format='h264')
-        self.camera.led = False
-        self.isActive = True
+        self.camera.led = True
         self.camera.start_preview(alpha=150)
+        self.camera.annotate_text = "%s" % self.timestamp
 
 
     def stop(self):
@@ -101,7 +100,6 @@ class Recorder(object):
             print ("*** Conversion complete ***")
         else:
             print ("**! Conversion FAILED !**")
-        self.camera.led = False
 
         silentremove(self.srcroot)
         silentremove("{0}{1}.h264".format(self.dstroot,self.timestamp))
@@ -114,9 +112,10 @@ class Recorder(object):
             print (line),
         self.camera.stop_preview()
         self.camera.led = False
-        self.isActive = False
         print("Recording stopped at %s ..."% now())
 
+
+    
 
         
     def record(self):
@@ -161,7 +160,6 @@ class Recorder(object):
         for line in iter(p.stdout.readline, b''):
             print (line),
         self.camera.stop_preview()
-        self.camera.led = True
         time.sleep(1)
         self.camera.close()
         #
@@ -173,22 +171,20 @@ class Recorder(object):
 def code1440(time):
     # Convert a 2400 time to 1440 time
     if(len(time) == 4):
-        tRaw = (int(time[0])*600+int(time[1])*60)+int(time[2])+int(time[3])
+        tRaw = (int(time[0])*600)+(int(time[1])*60)+(int(time[2])*10)+int(time[3])
     elif(len(time) == 3):
-        tRaw = (int(time[0])*60)+int(time[1])+int(time[2])
+        tRaw = (int(time[0])*60) +(int(time[1])*10)+int(time[2])
     elif(len(time) == 2):
-        tRaw = int(time[0])+int(time[1])
+        tRaw = (int(time[0])*10)+int(time[1])
     else:
         tRaw = int(time[0])
     return tRaw
 def code2400(time):
     # Convert a 1440 time to 2400
-    if(len(time) == 4):
-        tRaw = (int(time[0])*600+int(time[1])*60)+int(time[2])+int(time[3])
-    elif(len(time) == 3):
-        tRaw = (int(time[0])*60)+int(time[1])+int(time[2])
-    elif(len(time) == 2):
-        tRaw = int(time[0])+int(time[1])
+    if( len(time) >= 2):
+        h = int(time) % 60
+        m = int(time) - h*60
+        tRaw = (h*100)+m
     else:
         tRaw = int(time[0])
     return tRaw
@@ -223,7 +219,9 @@ class Schedule(object):
     def showEvents(self):
         print("All events:")
         for event in self.events:
-            print("From %04d to %04d" % (event['start'], (event['start']+event['length'])))
+            s = event['start']
+            e = code2400(str( code1440(str(event['start'])) + code1440(str(event['length']))))
+            print("From %04d to %04d" % (s,e))
         print("\n")
 
     #   Convert an events list to Witty Pi schedule text
@@ -313,6 +311,7 @@ END	2025-07-31 23:59:59'''
                     wpiCommands.append('OFF\tM1')
                 sleep = 2400 - curTime  # stretch until midnight
                 wpiCommands.append('ON\t%s\tWAIT\t#%s' %(code(sleep, state="ON"),code(event['length'])))
+                wpiCommands.append('OFF\tM1')
                 print(curTime," + ",sleep," should be 2400!")
                                             
             else:       # All other events
@@ -410,7 +409,7 @@ END	2025-07-31 23:59:59'''
         print("Adding an event ... "),
         # Create an empty new event and sorted events list
         newEvent = {'start' : 0000,
-                  'length' : 0000}        
+                  'length' : 0000}
         sortedEv = []
         
         while True:
@@ -437,7 +436,7 @@ END	2025-07-31 23:59:59'''
             for ev in self.events:
                 if (ev['start'] < newEvent['start']): # New event is after this one
                     print("Added ev at %d"%(ev['start']))
-                    sortevEv.append(ev)
+                    sortedEv.append(ev)
                 else:   # New event is before this one
                     time.sleep(3)
                     sortedEv.append(newEvent)
@@ -446,7 +445,7 @@ END	2025-07-31 23:59:59'''
             if(len(sortedEv) != len(self.events)+1):
                 print("Adding error")
                 print("sortedEv len %d, events len %d" % (len(sortedEv), len(self.events)))
-                golf
+                
             print("sortedEv len %d, events len %d" % (len(sortedEv), len(self.events)))
             self.events = list(sortedEv)
             print("sortedEv len %d, events len %d" % (len(sortedEv), len(self.events)))
@@ -462,7 +461,6 @@ END	2025-07-31 23:59:59'''
         newEvent = {'start' : 0000,
                   'length' : 0000}
         self.events.clear()
-        self.ED = SortedDict(self.events)
         print("Events cleared! There are %d events:" % len(self.events))
     
     #   Return a blank event item
@@ -655,15 +653,16 @@ class Display(object):
         self.width = self.disp.width
         self.height = self.disp.height
         self.font = ImageFont.truetype("GameCube.ttf", 7)
-        
+        print('..')
         if 'schedule' in k_parems:
             # If the assigned schedule is listed...
             self.schedule = k_parems['schedule']
         else:
-            self.schedule = []
+            self.schedule = Schedule("Import", "/home/wittyPi/schedules/HVScriptIMPORT.wpi")
 
         if 'cam' in k_parems and k_parems['cam'] == True:
-            # If the assigned camera is listed...          
+            # If the assigned camera is listed...
+            time.sleep(5)
             recorder = Recorder()
             self.cam = recorder
         else:
@@ -727,13 +726,18 @@ class Display(object):
         recRes = 0.01
 ##        self.cam.start()
         self.cam.camera.led = False
-        while self.decay>0:   
+        self.eventsBar()
+        self.update()
+        while self.decay>0 or self.cam.camera.recording == True:   
+            
             
             if(self.mode == 'TIME'): 
                 com = curses.wrapper(navDecay)
+                
             else: com = curses.wrapper(nav)
             if(self.fresh == True):
                 i = 0   # If this view is fresh, reset item index
+
           
             # Interpret navigation commands
             if(com == 'CH'):
@@ -766,8 +770,11 @@ class Display(object):
                 self.fresh = False
                  
             elif (com == 0 and self.mode == 'DEL'):
+                self.fresh = False
                 i = -1
-            elif (com == 1 and self.mode == 'ADD'): i = -1
+            elif (com == 1 and self.mode == 'ADD'):
+                self.fresh = False
+                i = -1
             
             # Interpret Left and Right commands
             elif(com == 'R'):
@@ -782,35 +789,31 @@ class Display(object):
                     self.fresh = False
                     
             # Interpret a DECAY command due to idling
-            elif(com == 'DECAY'):
-                self.mode = 'TIME'
-            
-##            if(self.decay < self.start/2):  # When decay is almost complete, show countdown
-##                self.mode = 'TIME'
-##                # Clear image buffer by drawing a black filled box.
-##                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-##                self.draw.text((self.width/2-25,self.height/2), '%.2f' % round(float(self.decay),3),
-##                        font=self.font, fill=1)
-
+            elif(com == 'DECAY' or self.mode == 'TIME'):
+                if(self.cam.camera.recording == True and self.decay <= 0):
+                    i = -3
+                else:
+                    self.mode = 'TIME'
+                    self.decay -= recRes*2           
             
             if(self.fresh == True):
                 i = 0   # If this view is fresh, reset item index
             self.tabs()
             self.showRoom(self.mode, i)
             self.eventsBar()
-##            self.draw.text((120,self.height/2), '%s' % i,
-##                        font=self.font, fill=1)
-            
             self.update()
-            self.decay -= recRes*2
-            time.sleep(recRes/2)
-        # Decay is complete, SHUTDOWN
+            #self.eventsBar()
+##            self.draw.text((120,self.height/2), '%s' % i, font=self.font, fill=1)
+            # End of while loop
+
+            
+        # Decay is complete and not recording, SHUTDOWN
         self.mode = 'KILL'
         self.tabs()
         self.showRoom(self.mode, i)
         self.update()
         
-        self.cam.stop
+        self.cam.camera.close()
         
         self.mode = 'TIME'
         self.tabs()
@@ -819,14 +822,10 @@ class Display(object):
 
     def showRoom(self, mode, i):
         if(mode == 'VIEW'): self.roomView(i)
-        if(mode == 'ADD'): self.roomAdd(i)
-        if(mode == 'DEL'): self.roomDelete(i)
-        if(mode == 'TIME'): self.roomTime(i)
-
-
-
-
-
+        elif(mode == 'ADD'): self.roomAdd(i)
+        elif(mode == 'DEL'): self.roomDelete(i)
+        elif(mode == 'TIME'): self.roomTime(i)
+        else: self.roomMain()
 
 
             
@@ -887,6 +886,18 @@ class Display(object):
         # Clear image buffer by drawing a black filled box.
         self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
         i = i
+        if(self.liveNow() == True): # If an event is scheduled for now...
+            if(self.cam.camera.recording == False):
+                self.cam.start()    # Start recording scheduled event
+            else:   # Already started  scheduled event
+                self.draw.text((5,1), "REC NOW..",
+                               font=self.font, fill=1)
+        elif(self.liveNow() == False and self.cam.camera.recording == True):
+            
+            self.cam.stop()
+        else:
+            pass
+        
         if(i == -1):    # Setting system/RTC time
             self.draw.text((3 ,self.height/2), 'Give cur. time:',
                        font=self.font, fill=1)
@@ -898,18 +909,26 @@ class Display(object):
                        font=self.font, fill=1)
             self.fresh = True
         if(i == -2):    # Manually start a recording
-            self.draw.text((2, self.height/2), "Record NOW??",
-                           font=self.font, fill=1)
+            
+            if(self.cam.camera.recording==False):
+                self.draw.text((2, self.height/2), "Record NOW??",
+                               font=self.font, fill=1)
+            else:
+                self.draw.text((2, self.height/2), "STOP NOW??",
+                               font=self.font, fill=1)
             self.update()
             answer = curses.wrapper(getConfirm)
             
             self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-            if answer == True :
+            if answer == True and self.cam.camera.recording == False:
                 self.cam.start()
                 self.draw.text((2, self.height/2), "Recording...",
-                           font=self.font, fill=1)            
-                self.update()
-                time.sleep(2)
+                           font=self.font, fill=1)
+                i = 0
+            elif answer == True and self.cam.camera.recording == True:
+                self.cam.stop()
+                self.draw.text((2, self.height/2), "Stopping...",
+                           font=self.font, fill=1)
                 i = 0
             else:
                 self.draw.text((self.width/2-28, self.height/2), "Canceled",
@@ -917,9 +936,14 @@ class Display(object):
             self.update()
             time.sleep(2)
             self.fresh = True
+        if(i == -3):    # Sleeping during a recording
+            self.draw.text((self.width/2-28, self.height/2), "SLEEPING",
+                           font=self.font, fill=1)
+            self.update()
+            self.fresh = True
         else:   # Show current time in tabs and decay coutdown
             newtime = nowt()
-            if(self.cam.isActive==True):
+            if(self.cam.camera.recording==True):
                 self.draw.text((self.width/2-50,self.height/2), 'Sleep in  %.2f' % round(float(self.decay),3),
                         font=self.font, fill=1)
             else:
@@ -927,6 +951,7 @@ class Display(object):
                         font=self.font, fill=1)
             self.fresh = True 
         
+
         
 
     def roomAdd(self, i):
@@ -970,8 +995,9 @@ class Display(object):
                     ## Call schedule add function
                     self.schedule.addEvent(start, length)
                     self.draw.text((1, self.height/2), 'Event ADDED...', font=self.font, fill=1)
-                    ## Call schedule synch function
-##                    self.draw.text((1, self.height/2), 'Events SYNCHED', font=self.font, fill=1)
+                    ## Call schedule sync function
+                    self.schedule.sync()
+                    self.draw.text((1, self.height/2), 'Events SYNCHED', font=self.font, fill=1)
                 else:
                     self.draw.text((self.width/2-28, self.height/2), "Canceled SAVE",
                                font=self.font, fill=1)
@@ -984,7 +1010,21 @@ class Display(object):
                            font=self.font, fill=1)
             self.fresh = True
 
-    
+
+    def liveNow(self):
+        # Function to check if an event is scheduled for right now
+        for ev in self.schedule.events:
+            start = code1440(str(ev['start']))
+            length = code1440(str(ev['length']))
+            now = code1440(str(nowti()))
+            
+            s = self.width*(start/1440)
+            e = (self.width*((start+length)/1440))
+            if(now >= start and now < start+length):
+                print('%r >= %r'%(now, start))
+                return True
+        else:
+            return False
 
 
 
@@ -992,29 +1032,40 @@ class Display(object):
                 
 
     def eventsBar(self):
-        i=0     #   1440 minutes in a day
+        j=1440     #   1440 minutes in a day
         # Clear bar buffer by drawing a black filled box.
-        #self.draw.rectangle((0,28,self.width,self.height), outline=0, fill=0)
-        while(i<=1440):
-            x = ((self.width-3)*(i/1440))
-            if(i%720 == 0):
+        #self.draw.rectangle((0,28,self.width,self.height), outline=0, fill=1)
+        
+        while(j>0):
+
+        
+            x = ((self.width)*(float(j)/float(1440)))
+            if(j%720 == 0):
+                print("HOUR")
+                #self.draw.line(((x,26) , (self.width/2,self.height)), fill=1)
                 self.draw.line(((x,26) , (x,self.height)), fill=1)
-            elif(i%180 == 0):
+            elif(j%180 == 0):
                 self.draw.line(((x,28), (x,self.height)), fill=1)            
-            elif(i%60 == 0):
+            elif(j%60 == 0):
                 self.draw.line(((x,30) , (x,self.height)), fill=1)
-            else:
-                ##self.draw.line(((x,31), (x,self.height)), fill=1)
-                pass
-            i+=30
+            j-=30
+##        self.draw.line(((self.width/2,26) , (self.width/2,self.height)), fill=1)
         for ev in self.schedule.events:
             start = code1440(str(ev['start']))
             length = code1440(str(ev['length']))
+            end = start+length 
             
-            s = self.width*(start/1440)
-            e = (self.width*((start+length)/1440))
+            s = (self.width*(float(start)/float(1440)))
+            #g = float(720)/float(1440)
+            e = (self.width*(float(end)/float(1440)))
+            ##self.draw.line(((self.width/2,26) , (self.width/2,self.height)), fill=1)
+        
+            #print("%r,%r, %r ~ %r, %r"%(start,length,end, s,e))
+            #self.draw.line(((f,26) , (f,self.height)), fill=1)
             self.draw.chord((s,30, e,self.height), -180,0, outline=1, fill=0)
-##            self.draw.line(((s, 20) , (s,32)), fill=1)
+            #self.draw.line(((f, 20) , (f,32)), fill=1)
+        
+        #self.draw.line(((10,self.width), (20, self.height)), fill=1)
 
     def tabs(self):
         length = 40
