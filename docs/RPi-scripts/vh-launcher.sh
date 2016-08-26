@@ -1,9 +1,9 @@
 #!/bin/sh
-# VHlauncher.sh
+# vh-launcher.sh
 # place in /boot/, will be called by rc.local
-# Action: navigate to home directory, then to this directory, then execute python script, then back home
+# Action: navigate to home directory, then to script directory, then execute python script in a terminal, then back home
 
 cd /
 cd /home/pi/ViewHive/viewhive
-sudo python ViewHive.py
+sudo python3 ViewHive.py
 cd /

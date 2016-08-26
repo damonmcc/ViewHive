@@ -5,7 +5,6 @@ from PIL import ImageFont
 from picamera import PiCamera, Color
 import time
 from datetime import datetime as dt
-from multiprocessing import Process
 import subprocess
 import sys
 import shutil
@@ -24,6 +23,13 @@ def nowt():
 def nowti():
     # Return current time as an int
     return int(dt.now().strftime("%H%M"))
+def dateFormat(time):
+    # Return current time and date for command line script
+    # Add date input support
+    if len(time) > 3: hour = time[2:3]
+    else: hour = time[2]
+    minutes = time[0:1]
+    return dt.now().strftime("%Y-%m-%d "+hour+""+minutes+":00")
 def waitforUSB(drivename):
     print("Looking for USB drive named %s..."% drivename)
     path = '/media/pi/'+drivename+'/'
@@ -43,7 +49,9 @@ def silentremove(filename):
 class Recorder(object):
 
     def __init__(self):
+        print('. ', end='')
         self.camera = PiCamera()
+        print('. ', end='')
         self.camera.rotation = 180
         self.camera.resolution = (1920, 1080)
         self.camera.framerate = 30
@@ -51,7 +59,7 @@ class Recorder(object):
         #camera.framerate = 49
         self.camera.annotate_background = Color('grey')
         self.camera.annotate_foreground = Color('purple')
-
+        print('.')
         self.timestamp = now()
         self.recRes = 0.01 # resolution of elapsed time counter (seconds)
         #####
@@ -182,11 +190,13 @@ def code1440(time):
 def code2400(time):
     # Convert a 1440 time to 2400
     if( len(time) >= 2):
-        h = int(time) % 60
-        m = int(time) - h*60
+        m = int(time) % 60
+        h = (int(time) - m)/60
         tRaw = (h*100)+m
+        print('TRaw = %r, h was %i'% (tRaw, h))
     else:
         tRaw = int(time[0])
+        
     return tRaw
 
     
@@ -238,19 +248,17 @@ class Schedule(object):
             # ON    H22  WAIT    #H1
         # converts the event list to wpi format and stores in self.content
         self.content = ''
-        header ='''# HiveView generated schedule v1.1
-# Turn on 30 minutes before sunrise and sunset everyday
-#	05:52, 20:36 (05:22, 20:06) for VA on 7/11/2016
+        version = 1.2
+        header ='''# HiveView generated schedule v%r
+# Should turn on 30 minutes before sunrise and sunset everyday
+#	%r
 #
-# Recording length in comments
-
-BEGIN	2015-08-01 00:00:00
-END	2025-07-31 23:59:59'''
+# Recording length in comments'''% (version, self.events)
         wpiCommands = [""]
         i = 0
         curTime = 0
         def code(time, **k_parems):
-            # Convert a 2400 style time to wittyPi's H__ M__ format
+            # Convert a 2400 style time to a __:__ format or wittyPi's H__ M__ format
             h = ''
             m = ''
             
@@ -258,18 +266,24 @@ END	2025-07-31 23:59:59'''
             print(": "+"timeS: "+timeS+" curTime: "+str(curTime))
             if(time>=100): # Has an hour component
                 if(time>=1000): # more than 10 hours
-                    h = 'H%s%s'% (timeS[0], timeS[1])
                     if('state' in k_parems and k_parems['state'] == 'ON'): # For an ON command
                         if(timeS[2] != '0' or timeS[3] != '0'): # there are minutes
                             h = 'H%s'% timeS[0:1]
                             m = 'M%d'% (int(timeS[2:3])-1) # subtract 1 minute for OFF state
                         else: # m goes from 00 to 59
+                            
                             h = 'H%d'% (int(timeS[0:2]) - 1)
                             m = 'M59'
+                        code = h+' '+m
                     else:
-                        h = 'H%s'% timeS[0:1]
-                        m = 'M%s%s'% (timeS[2], timeS[3])
-                    code = h+' '+m
+                        if('begin' in k_parems and k_parems['begin'] == 'ON'): # begining of the day                            
+                            h = '%s%s'% (timeS[0], timeS[1])
+                            m = '%s%s'% (timeS[2], timeS[3])
+                            code = h+':'+m
+                        else:
+                            h = 'H%s%s'% (timeS[0], timeS[1])
+                            m = 'M%s%s'% (timeS[2], timeS[3])
+                            code = h+' '+m
                     
                 else:   # less than 10 hours
                     if('state' in k_parems and k_parems['state'] == 'ON'): # For an ON command
@@ -278,53 +292,83 @@ END	2025-07-31 23:59:59'''
                             m = 'M%d'% (int(timeS[1:2])-1) # subtract 1 minute for OFF state
                         else:                           
                             h = 'H%d'% (int(timeS[0]) - 1)
-                            m = 'M59' 
+                            m = 'M59'
+                        code = h+' '+m
                     else:
-                        h = 'H%s'% timeS[0]
-                        m = 'M%s%s'% (timeS[1], timeS[2])
-                    code = h+' '+m
+                        if('begin' in k_parems and k_parems['begin'] == 'ON'): # begining of the day
+                            h = '0%s'% timeS[0]
+                            m = '%s%s'% (timeS[1], timeS[2])
+                            code = h+':'+m
+                        else:
+                            h = 'H%s'% timeS[0]
+                            m = 'M%s%s'% (timeS[1], timeS[2])
+                            code = h+' '+m
+                        
             else:   # Only has a minute component
-                code = 'M%s'% time
+                if('begin' in k_parems and k_parems['begin'] == 'ON'): # begining if the day
+                    code = '00:%s'% time
+                else:
+                    code = 'M%s'% time
             return code
             
-
-        
-        for event in self.events:   # For each event in the list...
-            print("Event %d: %04d to %04d" % (i, event['start'], (event['start']+event['length'])))
-            if(i==0 and len(self.events)>1):   # First event
-                print("First event ..."),
-                if(event['start']>0):   # If starting after midnight, add morning buffer
-                    print("Adding morning buffer ..."),
-                    wpiCommands.append('ON\t%s\tWAIT'% code(event['start'],state="ON"))
-                    wpiCommands.append('OFF\tM1')
-                    curTime+= event['start']
-                #   Actual first event
-                wpiCommands.append('ON\t%s\tWAIT\t#%s'% (code(self.events[i+1]['start']-(curTime), state="ON"),code(event['length'])))
-                wpiCommands.append('OFF\tM1')
-                curTime = self.events[i+1]['start']
+        if(len(self.events)==0):     # No events
+                wpiCommands.append('BEGIN 2015-08-01 00:00:00')
+                wpiCommands.append('END	2025-07-31 23:59:59')
+                #   Combine all command strings into contents
+                self.content = '\n'.join(wpiCommands)
+                self.content = header+self.content
+                self.showContent()
                 
-            elif(i==len(self.events)-1): # Last or only event
-                print("Last (only?) event ..."),
-                if(i==0):
-                    print("Adding morning buffer for ONLY event..."),
-                    wpiCommands.append('ON\t%s\tWAIT'% code(event['start'],state="ON"))
+        else:
+            for event in self.events:   # For each event in the list...
+                print("Event %d: %04d to %04d" % (i, event['start'], (event['start']+event['length'])))
+                
+                
+                if(len(self.events)>1 and i==0):   # First event
+                    print("First event ..."),
+                    if(event['start']>0):   # If starting after midnight, add morning buffer
+                        print("Adding morning buffer ..."),
+                        startRAW = event['start']
+                        start = code(startRAW, begin='ON')
+                        wpiCommands.append('BEGIN 2015-08-01 '+start+':00')
+                        wpiCommands.append('END	2025-07-31 23:59:59')                   
+    ##                    wpiCommands.append('ON\t%s\tWAIT'% code(event['start'],state="ON"))
+    ##                    wpiCommands.append('OFF\tM1')
+    ##                    curTime+= event['start']
+                    else:
+                        wpiCommands.append('BEGIN 2015-08-01 00:00:00')
+                        wpiCommands.append('END	2025-07-31 23:59:59')
+                    
+                    wpiCommands.append('ON\t%s\tWAIT\t#%s'% (code(self.events[i+1]['start']-(curTime), state="ON"),code(event['length'])))
                     wpiCommands.append('OFF\tM1')
-                sleep = 2400 - curTime  # stretch until midnight
-                wpiCommands.append('ON\t%s\tWAIT\t#%s' %(code(sleep, state="ON"),code(event['length'])))
-                wpiCommands.append('OFF\tM1')
-                print(curTime," + ",sleep," should be 2400!")
-                                            
-            else:       # All other events
-                print("Average event ..."),
-                wpiCommands.append('ON\t%s\tWAIT\t#%s' %(code(self.events[i+1]['start']-(curTime), state="ON"),code(event['length'])))
-                wpiCommands.append('OFF\tM1')
-                curTime = self.events[i+1]['start']
-            i+= 1
-            
-        #   Combine all command strings into contents
-        self.content = '\n'.join(wpiCommands)
-        self.content = header+self.content
-        self.showContent()
+                    curTime = self.events[i+1]['start']
+                    
+                elif(i==len(self.events)-1): # Last or only event
+                    print("Last (or only?) event ..."),
+                    if(i==0):   # Only event
+                        print("Adding morning buffer for ONLY event..."),
+                        startRAW = event['start']
+                        start = code(startRAW, begin='ON')
+                        wpiCommands.append('BEGIN 2015-08-01 '+start+':00')
+                        wpiCommands.append('END	2025-07-31 23:59:59')
+                        wpiCommands.append('ON\t%s\tWAIT\t#%s'% (code(2400,state="ON"),code(event['length'])))
+                        wpiCommands.append('OFF\tM1')
+                    else:
+                        last = 2400 - curTime  # stretch until next BEGIN
+                        wpiCommands.append('ON\t%s\tWAIT\t#%s' %(code(last, state="ON"),code(event['length'])))
+                        wpiCommands.append('OFF\tM1')
+                        print(curTime," + ",last," should be 2400!")
+                else:       # All other events
+                    print("Average event ..."),
+                    wpiCommands.append('ON\t%s\tWAIT\t#%s' %(code(self.events[i+1]['start']-(curTime), state="ON"),code(event['length'])))
+                    wpiCommands.append('OFF\tM1')
+                    curTime = self.events[i+1]['start']
+                i+= 1
+                
+            #   Combine all command strings into contents
+            self.content = '\n'.join(wpiCommands)
+            self.content = header+self.content
+            self.showContent()
         
     #   Convert Witty Pi schedule text to an events list
     def WpiToEvents(self):
@@ -361,6 +405,12 @@ END	2025-07-31 23:59:59'''
             print(i," ", wpiLines[i])
             i += 1
         print(i," ", wpiLines[i])  # BEGIN
+        bSplit = wpiLines[i].split(' ')
+        bTime = dt.strptime(bSplit[len(bSplit)-1], "%H:%M:%S")
+        
+        if(bTime.hour or  bTime.minute != 0):
+            print("Beginning has a non-zero time %r:%r!!!"%(bTime.hour, bTime.minute))
+            
         i+=1
         print(i," ", wpiLines[i])  # END
         i+=1
@@ -375,17 +425,22 @@ END	2025-07-31 23:59:59'''
             if(curType == 'ON'):
                 #   If theres a recording length comment
                 if('#' in curCommand[len(curCommand)-1]):
-                    curTime+= time(curCommand[1], False)
-                    comment = curCommand[len(curCommand)-1].split('#')
+                    if(curTime == 0):   # First event...
+                        # Overide blank/0000 start time
+                        tempEvent['start'] = (int(bTime.hour)*100)+int(bTime.minute)
                     
+                    curTime+= time(curCommand[1], True)
+                    comment = curCommand[len(curCommand)-1].split('#')
+
                     tempEvent['length'] = time(comment[1], True)
-##                    print("Length is %d"%tempEvent['length']),
+                    print("Length is %d"%tempEvent['length']),
 ##                    tempEvent['end'] = tempEvent['start']+time(comment[1])-1
                     self.events.append(tempEvent)
                     self.showEvents()
                     tempEvent = self.clearEvent()
                     i+=1
                 #   Otherwise this is a gap without recording length
+                #   Since utilizing BEGIN time, this may never be reached
                 else:
                     curTime+= time(curCommand[1], False)
                     tempEvent = self.clearEvent()
@@ -398,8 +453,6 @@ END	2025-07-31 23:59:59'''
             else:
                 print("NON-command on this line ", curCommand)
                 i+=1
-
-
 
 
 
@@ -427,7 +480,7 @@ END	2025-07-31 23:59:59'''
             except AssertionError as strerror:
                 print("%s Try again!"% strerror),
 
-        # Create an event list sorted by start time        added = False
+        # Create an event list sorted by start time
         if(len(self.events) == 0): self.events.append(newEvent)
         elif(newEvent['start'] > self.events[len(self.events)-1]['start']):
             # new event will be the last
@@ -438,7 +491,7 @@ END	2025-07-31 23:59:59'''
                     print("Added ev at %d"%(ev['start']))
                     sortedEv.append(ev)
                 else:   # New event is before this one
-                    time.sleep(3)
+                    #time.sleep(3)
                     sortedEv.append(newEvent)
                     sortedEv.append(ev)
                     print("Added newEvent and ev at %d"%(ev['start']))
@@ -483,8 +536,8 @@ END	2025-07-31 23:59:59'''
         self.file.close()
         
         # Copy local schedule file to wittyPi directories
-        cpCom1 = 'sudo cp -v ./'+self.source+' /home/wittyPi/schedules/HVScriptIMPORT.wpi'
-        cpCom2 = 'sudo cp -v ./'+self.source+' /home/wittyPi/schedule.wpi'
+        cpCom1 = 'sudo cp -v '+self.source+' /home/wittyPi/schedules/HVScriptIMPORT.wpi'
+        cpCom2 = 'sudo cp -v '+self.source+' /home/wittyPi/schedule.wpi'
         os.system(cpCom1)
         os.system(cpCom2)
         print("Schedule files copied ...")
@@ -639,6 +692,8 @@ def getTime(screen):
     screen.nodelay(0)
     curses.echo()
     time = screen.getstr()
+    if(time  == ''): time = 0
+    if(len(time) > 4): time = time[0:4]
     return int(time)
 
 
@@ -659,7 +714,7 @@ class Display(object):
             self.schedule = k_parems['schedule']
         else:
             self.schedule = Schedule("Import", "/home/wittyPi/schedules/HVScriptIMPORT.wpi")
-
+        print('..')
         if 'cam' in k_parems and k_parems['cam'] == True:
             # If the assigned camera is listed...
             time.sleep(5)
@@ -843,7 +898,7 @@ class Display(object):
         else:
             
             cur = self.schedule.events[i]
-            curString = '%d) %d'%(i+1, cur['start'])+' for '+'%d.'%cur['length']
+            curString = '#%d - %d'%(i+1, cur['start'])+' for '+'%d.'%cur['length']
             if(len(self.schedule.events)>1 and i<len(self.schedule.events)-1):
                 self.draw.text((self.width-10,self.height/2), '...',
                             font=self.font, fill=1)
@@ -870,6 +925,10 @@ class Display(object):
                 self.schedule.clearAllEvents()
                 self.draw.text((self.width/2-30, self.height/2), "DELETED!",
                            font=self.font, fill=1)
+                ## Call schedule sync function
+                self.schedule.sync()
+                self.draw.text((58, self.height/2), 'SYNCHED', font=self.font, fill=1)
+                self.fresh = True
             else:
                 self.draw.text((self.width/2-28, self.height/2), "Canceled",
                            font=self.font, fill=1)
@@ -890,7 +949,7 @@ class Display(object):
             if(self.cam.camera.recording == False):
                 self.cam.start()    # Start recording scheduled event
             else:   # Already started  scheduled event
-                self.draw.text((5,1), "REC NOW..",
+                self.draw.text((8,1), "RECording..",
                                font=self.font, fill=1)
         elif(self.liveNow() == False and self.cam.camera.recording == True):
             
@@ -899,14 +958,25 @@ class Display(object):
             pass
         
         if(i == -1):    # Setting system/RTC time
-            self.draw.text((3 ,self.height/2), 'Give cur. time:',
+            self.draw.text((3 ,self.height/2), 'Give cur. time >',
                        font=self.font, fill=1)
+            newTime = curses.wrapper(getTime)
+##            self.draw.text((3 ,self.height/2), 'Give cur. Month #>',
+##                       font=self.font, fill=1)
+##            newmM = curses.wrapper(getTime)
+##            self.draw.text((3 ,self.height/2), 'Give cur. Day #>',
+##                       font=self.font, fill=1)
+##            newD = curses.wrapper(getTime)
+
             
-            newtime = curses.wrapper(getTime)
+            timeCom = 'sudo date --set \''+dateFormat(str(newTime))+'\''
+            os.system(timeCom)
             # Clear image buffer by drawing a black filled box.
             self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-            self.draw.text((3 ,self.height/2), '%d' % newtime,
+            self.draw.text((1 ,self.height/2), 'Time is now %r' % newTime,
                        font=self.font, fill=1)
+            self.update()
+            time.sleep(2)
             self.fresh = True
         if(i == -2):    # Manually start a recording
             
@@ -968,13 +1038,15 @@ class Display(object):
             answer = curses.wrapper(getConfirm)
             self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
             if answer == True :
-                self.draw.text((1, self.height/2), 'ADDING', font=self.font, fill=1)
+                self.draw.text((self.width/2-30, self.height/2), 'ADDING', font=self.font, fill=1)
                 self.update()
-                time.sleep(2)
+                time.sleep(2)                
+                self.fresh = False
                 # Get start and length times for new event
                 self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
                 self.draw.text((1, self.height/2), 'Enter start time 0000 >',
                                font=self.font, fill=1)
+                
                 self.update()
                 start = curses.wrapper(getTime)     # Start time from 0000 to 24000
                 self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
@@ -994,10 +1066,11 @@ class Display(object):
                 if conf == True :
                     ## Call schedule add function
                     self.schedule.addEvent(start, length)
-                    self.draw.text((1, self.height/2), 'Event ADDED...', font=self.font, fill=1)
+                    self.draw.text((1, self.height/2), 'ADDED...', font=self.font, fill=1)
                     ## Call schedule sync function
                     self.schedule.sync()
-                    self.draw.text((1, self.height/2), 'Events SYNCHED', font=self.font, fill=1)
+                    self.draw.text((58, self.height/2), 'SYNCHED', font=self.font, fill=1)
+                    self.fresh = True
                 else:
                     self.draw.text((self.width/2-28, self.height/2), "Canceled SAVE",
                                font=self.font, fill=1)
@@ -1006,7 +1079,7 @@ class Display(object):
                            font=self.font, fill=1)
             
         elif i == 0:
-            self.draw.text((2, self.height/2), "Press 1",
+            self.draw.text((2, self.height/2), "Press 1 >",
                            font=self.font, fill=1)
             self.fresh = True
 
@@ -1021,7 +1094,7 @@ class Display(object):
             s = self.width*(start/1440)
             e = (self.width*((start+length)/1440))
             if(now >= start and now < start+length):
-                print('%r >= %r'%(now, start))
+                print('%r >= %r and <%r'%(now, start, start+length))
                 return True
         else:
             return False
@@ -1034,21 +1107,17 @@ class Display(object):
     def eventsBar(self):
         j=1440     #   1440 minutes in a day
         # Clear bar buffer by drawing a black filled box.
-        #self.draw.rectangle((0,28,self.width,self.height), outline=0, fill=1)
+        self.draw.rectangle((0,28,self.width,self.height), outline=0, fill=0)
         
         while(j>0):
-
-        
             x = ((self.width)*(float(j)/float(1440)))
             if(j%720 == 0):
-                print("HOUR")
-                #self.draw.line(((x,26) , (self.width/2,self.height)), fill=1)
-                self.draw.line(((x,26) , (x,self.height)), fill=1)
+                self.draw.line(((x,27) , (x,self.height)), fill=1)
             elif(j%180 == 0):
-                self.draw.line(((x,28), (x,self.height)), fill=1)            
+                self.draw.line(((x,29), (x,self.height)), fill=1)            
             elif(j%60 == 0):
-                self.draw.line(((x,30) , (x,self.height)), fill=1)
-            j-=30
+                self.draw.line(((x,31) , (x,self.height)), fill=1)
+            j-=60
 ##        self.draw.line(((self.width/2,26) , (self.width/2,self.height)), fill=1)
         for ev in self.schedule.events:
             start = code1440(str(ev['start']))
@@ -1098,7 +1167,10 @@ class Display(object):
         
             self.draw.polygon([(buf+(length*2-+off),0), (buf+length*3-off,0), (buf+length*3-off-off/2,h) , (buf+length*2-off/2,h)],
                               outline=1, fill=0)
-            self.draw.text((buf+length*2+5, 0), 'DEL',  font=self.font, fill=1)
+            if(self.fresh == False):
+                self.draw.text((self.width-41, 1), "%s" % nowt(),  font=self.font, fill=1)
+            else:
+                self.draw.text((buf+length*2+5, 0), 'DEL',  font=self.font, fill=1)
 
         elif(self.mode == 'DEL'):
             self.draw.polygon([(buf,0), (buf+length,0), (buf+length-off/2,h) , (buf+off/2,h)],
@@ -1116,7 +1188,7 @@ class Display(object):
         elif(self.mode == 'TIME'):
             self.draw.polygon([(buf,0), (self.width-buf,0), (self.width-buf-off/2,h) , (buf+off/2,h)],
                               outline=1, fill=0)
-            self.draw.text((self.width-45, 1), "%s" % nowt(),  font=self.font, fill=1)
+            self.draw.text((self.width-41, 1), "%s" % nowt(),  font=self.font, fill=1)
         else:
             self.draw.polygon([(buf,0), (self.width-buf,0), (self.width-buf-off/2,h) , (buf+off/2,h)],
                               outline=0, fill=1)
