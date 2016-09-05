@@ -22,13 +22,22 @@ def nowt():
     # Return current time as a formatted string
     return dt.now().strftime("%H:%M")
 
+def nowdt():
+    # Return current date and time for display
+    return dt.now().strftime("%Y/%m/%d, %H:%M")
+
 def nowti():
     # Return current time as an int
     return int(dt.now().strftime("%H%M"))
 
-def dateFormat(time):
+def dateFormat(y, m, d, time):
     # Return current time and date for command line script
     # Add date input support
+    # Date format: YYYYMMDD?
+    print("Date %r %r %r" % (y, m, d))
+    ys = str(y)
+    ms = str(m)
+    ds = str(d)
     if len(time) < 3:
         hours = "00"        
         minutes = time[:]
@@ -39,7 +48,7 @@ def dateFormat(time):
         hours = time[:2]
         minutes = time[2:]
     print("From %r... Hours %r , Mins: %r" % (time, hours, minutes))
-    return dt.now().strftime("%Y-%m-%d "+hours+":"+minutes+":00")
+    return dt.now().strftime(ys+"-"+ms+"-"+ds+" "+hours+":"+minutes+":00")
 
 def waitforUSB(drivename):
     print("Looking for USB drive named %s..."% drivename)
@@ -62,9 +71,9 @@ def silentremove(filename):
 class Recorder(object):
 
     def __init__(self):
-        print('. ', end='')
+        print('.. Recorder init.. ', end='')
         self.camera = PiCamera()
-        print('. ', end='')
+        print('.. ', end='')
         self.camera.rotation = 180
         self.camera.resolution = (1920, 1080)
         self.camera.framerate = 30
@@ -270,6 +279,7 @@ class Schedule(object):
         wpiCommands = [""]
         i = 0
         curTime = 0
+        mornBuff = 0
         def code(time, **k_parems):
             # Convert a 2400 style time to a __:__ format or wittyPi's H__ M__ format
             h = ''
@@ -318,7 +328,7 @@ class Schedule(object):
                             code = h+' '+m
                         
             else:   # Only has a minute component
-                if('begin' in k_parems and k_parems['begin'] == 'ON'): # begining if the day
+                if('begin' in k_parems and k_parems['begin'] == 'ON'): # begining of the day
                     code = '00:%s'% time
                 else:
                     code = 'M%s'% time
@@ -342,15 +352,17 @@ class Schedule(object):
                     if(event['start']>0):   # If starting after midnight, add morning buffer
                         print("Adding morning buffer ..."),
                         startRAW = event['start']
+                        mornBuff = startRAW
                         start = code(startRAW, begin='ON')
                         wpiCommands.append('BEGIN 2015-08-01 '+start+':00')
                         wpiCommands.append('END	2025-07-31 23:59:59')                   
     ##                    wpiCommands.append('ON\t%s\tWAIT'% code(event['start'],state="ON"))
     ##                    wpiCommands.append('OFF\tM1')
-                        curTime+= event['start']
+                        curTime = mornBuff
                     else:
                         wpiCommands.append('BEGIN 2015-08-01 00:00:00')
                         wpiCommands.append('END	2025-07-31 23:59:59')
+                    
                     
                     wpiCommands.append('ON\t%s\tWAIT\t#%s'% (code(self.events[i+1]['start']-(curTime), state="ON"),code(event['length'])))
                     wpiCommands.append('OFF\tM1')
@@ -367,10 +379,10 @@ class Schedule(object):
                         wpiCommands.append('ON\t%s\tWAIT\t#%s'% (code(2400,state="ON"),code(event['length'])))
                         wpiCommands.append('OFF\tM1')
                     else:
-                        last = 2400 - curTime  # stretch until next BEGIN
+                        last = 2400 - curTime+mornBuff  # stretch until next BEGIN
                         wpiCommands.append('ON\t%s\tWAIT\t#%s' %(code(last, state="ON"),code(event['length'])))
                         wpiCommands.append('OFF\tM1')
-                        print(curTime," + ",last," should be 2400!")
+                        print(curTime," + ",last," should be 2400 + ",mornBuff,"!")
                 else:       # All other events
                     print("Average event ..."),
                     wpiCommands.append('ON\t%s\tWAIT\t#%s' %(code(self.events[i+1]['start']-(curTime), state="ON"),code(event['length'])))
@@ -441,8 +453,9 @@ class Schedule(object):
                     if(curTime == 0):   # First event...
                         # Overide blank/0000 start time
                         tempEvent['start'] = (int(bTime.hour)*100)+int(bTime.minute)
+                        curTime = tempEvent['start']
                     
-                    curTime+= time(curCommand[1], True)
+                    curTime+= time(curCommand[1], False)
                     comment = curCommand[len(curCommand)-1].split('#')
 
                     tempEvent['length'] = time(comment[1], True)
@@ -553,12 +566,19 @@ class Schedule(object):
         cpCom2 = 'sudo cp -v '+self.source+' /home/wittyPi/schedule.wpi'
         os.system(cpCom1)
         os.system(cpCom2)
+        
         print("Schedule files copied ...")
         
+        # Set wittyPi apparent time        
+        syncCom1 = "sudo /home/wittyPi/init.sh"
+##        os.system(syncCom1)
+        print(subprocess.check_output(["bash","-c",
+                                       ". /home/wittyPi/utilities.sh; system_to_rtc"],
+                                  universal_newlines = True))
         # Set wittyPi schedule with its runScript.sh
         print(subprocess.check_output(["sudo", "/home/wittyPi/runScript.sh"],
                                   universal_newlines = True))
-        print("Ran wittyPi runScript.sh ...")
+        print("Ran wittyPi system_to_rtc utility and runScript.sh ...")
 
 
 
@@ -713,6 +733,18 @@ def getTime(screen):
         if(len(time) > 4): time = time[-4:]
         return int(time)
     
+def getDate(screen):
+    screen.addstr(3,8,"Enter YYYYMMDD, press ENTER >")
+    screen.nodelay(0)
+    curses.echo()
+    try:
+        date = screen.getstr()
+    except Exception as inst:            
+        screen.addstr(11, 1,"*DATE error: %s"% inst)
+    else:
+        if(date  == ''): time = 0
+        if(len(date) > 8): time = time[-8:]
+        return int(date)
 
 
 class Display(object):
@@ -726,18 +758,23 @@ class Display(object):
         self.width = self.disp.width
         self.height = self.disp.height
         self.font = ImageFont.truetype("GameCube.ttf", 7)
-        print('..')
+        print('..schedule..')
         if 'schedule' in k_parems:
             # If the assigned schedule is listed...
             self.schedule = k_parems['schedule']
         else:
             self.schedule = Schedule("Import", "/home/wittyPi/schedules/HVScriptIMPORT.wpi")
-        print('..')
+        print('..cam..')
         if 'cam' in k_parems and k_parems['cam'] == True:
             # If the assigned camera is listed...
-            time.sleep(5)
-            recorder = Recorder()
-            self.cam = recorder
+            time.sleep(6)
+            try:
+                recorder = Recorder()
+            except Exception as inst:                
+                screen.addstr(11, 1,"*CAM error: %s"% inst)
+                print("CAM error: %s!!"%inst)
+            else:
+                self.cam = recorder
         else:
             self.recorder = []
         print('...')
@@ -789,7 +826,9 @@ class Display(object):
         self.draw.text((2, 2),    'Hello',  font=self.font, fill=255)
         self.draw.text((2, 15), 'ViewHive v0.6!', font=self.font, fill=255)
         self.update()
-        time.sleep(3)
+        time.sleep(1)
+        ## Call schedule sync function
+        self.schedule.sync()
 
 
 
@@ -864,6 +903,7 @@ class Display(object):
             # Interpret a DECAY command due to idling
             elif(com == 'DECAY' or self.mode == 'TIME'):
                 if(self.cam.camera.recording == True and self.decay <= 0):
+                    # Recording but idle
                     i = -3
                 else:
                     self.mode = 'TIME'
@@ -942,7 +982,8 @@ class Display(object):
                 ## Call schedule delete function
                 self.schedule.clearAllEvents()
                 self.draw.text((self.width/2-30, self.height/2), "DELETED!",
-                           font=self.font, fill=1)
+                           font=self.font, fill=1)                
+                time.sleep(2)
                 ## Call schedule sync function
                 self.schedule.sync()
                 self.draw.text((58, self.height/2), 'SYNCHED', font=self.font, fill=1)
@@ -951,10 +992,10 @@ class Display(object):
                 self.draw.text((self.width/2-28, self.height/2), "Canceled",
                            font=self.font, fill=1)
             self.update()
-            time.sleep(2)
+            time.sleep(1)
             self.fresh = True
         elif i == 0:
-            self.draw.text((2, self.height/2), "Press 0",
+            self.draw.text((2, self.height/2), "Press 0 >",
                            font=self.font, fill=1)
             self.fresh = True
                 
@@ -965,13 +1006,15 @@ class Display(object):
         i = i
         if(self.liveNow() == True): # If an event is scheduled for now...
             self.decay = self.start
+            self.draw.rectangle((0,0,self.width/3,5), outline=0, fill=0)
             if(self.cam.camera.recording == False):
                 self.cam.start()    # Start recording scheduled event
-            else:   # Already started  scheduled event
-                self.draw.text((8,1), "RECording..",
+            else:   # Already started  scheduled even
+                self.draw.text((1,1), "RECording..",
                                font=self.font, fill=1)
         elif(self.liveNow() == False and self.cam.camera.recording == True):
-            self.draw.text((9,1), "SAVing..",
+            self.draw.rectangle((0,0,self.width/3,5), outline=0, fill=0)
+            self.draw.text((1,1), "SAVing..",
                                font=self.font, fill=1)
             self.update()
             self.cam.stop()
@@ -993,6 +1036,24 @@ class Display(object):
                 self.update()
                 time.sleep(2)                
                 self.fresh = False
+
+                # Get current date
+                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)                
+                self.draw.text((3 ,self.height/2), 'Give date YYYY >',
+                           font=self.font, fill=1)
+                self.update()                
+                y = curses.wrapper(getDate)
+                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)                
+                self.draw.text((3 ,self.height/2), 'Give date MM >',
+                           font=self.font, fill=1)
+                self.update()                
+                m = curses.wrapper(getDate)
+                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)                
+                self.draw.text((3 ,self.height/2), 'Give date DD >',
+                           font=self.font, fill=1)
+                self.update()                
+                d = curses.wrapper(getDate)
+                
                 # Get current time
                 self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)                
                 self.draw.text((3 ,self.height/2), 'Give cur. time (2400) >',
@@ -1002,7 +1063,7 @@ class Display(object):
                 
                 # Now confirm this entries
                 self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-                self.draw.text((2, self.height/2), "Set time to %d?"% (newTime),
+                self.draw.text((2, self.height/2), "Set %r/%r/%r %d?"% (y,m,d, newTime),
                            font=self.font, fill=1)
                 self.update()
                 
@@ -1010,8 +1071,9 @@ class Display(object):
                 self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
                 if conf == True :
                     ## Set system/RTC time
-                    timeCom = 'sudo date --set \''+dateFormat(str(newTime))+'\''
+                    timeCom = 'sudo date --set \''+dateFormat(y,m,d, str(newTime))+'\''
                     os.system(timeCom)
+                    self.schedule.sync()
                     self.draw.text((35, self.height/2), 'RTC SET', font=self.font, fill=1)
                     self.update()
                     time.sleep(2)
@@ -1026,10 +1088,12 @@ class Display(object):
                 else:
                     self.draw.text((self.width/2-28, self.height/2), "Canceled SET",
                                font=self.font, fill=1)
+                    self.fresh = True
             else:
                 self.draw.text((self.width/2-28, self.height/2), "Canceled CLOCK",
                            font=self.font, fill=1)
-            
+                
+            self.fresh = True
 
 
         if(i == -2):    # Manually start a recording
@@ -1126,7 +1190,7 @@ class Display(object):
                     self.draw.text((58, self.height/2), 'SYNCHED', font=self.font, fill=1)
                     self.fresh = True
                 else:
-                    self.draw.text((self.width/2-28, self.height/2), "Canceled SAVE",
+                    self.draw.text((self.width/2-38, self.height/2), "Canceled SAVE",
                                font=self.font, fill=1)
             else:
                 self.draw.text((self.width/2-28, self.height/2), "Canceled ADD",
@@ -1222,7 +1286,7 @@ class Display(object):
             self.draw.polygon([(buf+(length*2-+off),0), (buf+length*3-off,0), (buf+length*3-off-off/2,h) , (buf+length*2-off/2,h)],
                               outline=1, fill=0)
             if(self.fresh == False):
-                self.draw.text((self.width-41, 1), "%s" % nowt(),  font=self.font, fill=1)
+                self.draw.text((self.width-31, 1), "%s" % now(),  font=self.font, fill=1)
             else:
                 self.draw.text((buf+length*2+5, 0), 'DEL',  font=self.font, fill=1)
 
@@ -1242,7 +1306,7 @@ class Display(object):
         elif(self.mode == 'TIME'):
             self.draw.polygon([(buf,0), (self.width-buf,0), (self.width-buf-off/2,h) , (buf+off/2,h)],
                               outline=1, fill=0)
-            self.draw.text((self.width-41, 1), "%s" % nowt(),  font=self.font, fill=1)
+            self.draw.text((self.width-100, 1), "%s" % nowdt(),  font=self.font, fill=1)
         else:
             self.draw.polygon([(buf,0), (self.width-buf,0), (self.width-buf-off/2,h) , (buf+off/2,h)],
                               outline=0, fill=1)

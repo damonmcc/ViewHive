@@ -25,7 +25,7 @@ from ViewHiveUtil import *
 
 display = Display(cam = True)
 print('Display started')
-##display.welcome()
+display.welcome()
 ##print('Welcome started')
 
 display.update()
