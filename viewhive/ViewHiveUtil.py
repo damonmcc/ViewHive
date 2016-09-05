@@ -17,19 +17,30 @@ import Adafruit_GPIO.SPI as SPI
 def now():
     # Return current time and date as a string
     return dt.now().strftime("%Y-%m-%d_%H.%M.%S")
+
 def nowt():
     # Return current time as a formatted string
     return dt.now().strftime("%H:%M")
+
 def nowti():
     # Return current time as an int
     return int(dt.now().strftime("%H%M"))
+
 def dateFormat(time):
     # Return current time and date for command line script
     # Add date input support
-    if len(time) > 3: hour = time[2:3]
-    else: hour = time[2]
-    minutes = time[0:1]
-    return dt.now().strftime("%Y-%m-%d "+hour+""+minutes+":00")
+    if len(time) < 3:
+        hours = "00"        
+        minutes = time[:]
+    elif len(time) == 3:
+        hours = time[:1]
+        minutes = time[2:]
+    else:
+        hours = time[:2]
+        minutes = time[2:]
+    print("From %r... Hours %r , Mins: %r" % (time, hours, minutes))
+    return dt.now().strftime("%Y-%m-%d "+hours+":"+minutes+":00")
+
 def waitforUSB(drivename):
     print("Looking for USB drive named %s..."% drivename)
     path = '/media/pi/'+drivename+'/'
@@ -37,6 +48,7 @@ def waitforUSB(drivename):
           print("Waiting for %s USB..." % drivename)
           wait(3)
     print("%s detected at %s !"% (drivename, path))
+    
 def silentremove(filename):
     try:
         os.remove(filename)
@@ -44,6 +56,7 @@ def silentremove(filename):
     except OSError as e:
         if e.errno != errno.ENOENT: # no such file or directory
             raise # re-raise exception if a different error occured
+
 
 
 class Recorder(object):
@@ -334,7 +347,7 @@ class Schedule(object):
                         wpiCommands.append('END	2025-07-31 23:59:59')                   
     ##                    wpiCommands.append('ON\t%s\tWAIT'% code(event['start'],state="ON"))
     ##                    wpiCommands.append('OFF\tM1')
-    ##                    curTime+= event['start']
+                        curTime+= event['start']
                     else:
                         wpiCommands.append('BEGIN 2015-08-01 00:00:00')
                         wpiCommands.append('END	2025-07-31 23:59:59')
@@ -688,13 +701,18 @@ def getConfirm(screen):
 
 #   Get user-input time string
 def getTime(screen):
-    screen.addstr(3,8,"Enter a time and press ENTER >")
+    screen.addstr(3,8,"Enter a 2400 time, press ENTER >")
     screen.nodelay(0)
     curses.echo()
-    time = screen.getstr()
-    if(time  == ''): time = 0
-    if(len(time) > 4): time = time[0:4]
-    return int(time)
+    try:
+        time = screen.getstr()
+    except Exception as inst:            
+        screen.addstr(11, 1,"*TIME error: %s"% inst)
+    else:
+        if(time  == ''): time = 0
+        if(len(time) > 4): time = time[-4:]
+        return int(time)
+    
 
 
 class Display(object):
@@ -946,38 +964,74 @@ class Display(object):
         self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
         i = i
         if(self.liveNow() == True): # If an event is scheduled for now...
+            self.decay = self.start
             if(self.cam.camera.recording == False):
                 self.cam.start()    # Start recording scheduled event
             else:   # Already started  scheduled event
                 self.draw.text((8,1), "RECording..",
                                font=self.font, fill=1)
         elif(self.liveNow() == False and self.cam.camera.recording == True):
-            
+            self.draw.text((9,1), "SAVing..",
+                               font=self.font, fill=1)
+            self.update()
             self.cam.stop()
+            self.decay = self.start
+
         else:
             pass
         
         if(i == -1):    # Setting system/RTC time
-            self.draw.text((3 ,self.height/2), 'Give cur. time >',
-                       font=self.font, fill=1)
-            newTime = curses.wrapper(getTime)
-##            self.draw.text((3 ,self.height/2), 'Give cur. Month #>',
-##                       font=self.font, fill=1)
-##            newmM = curses.wrapper(getTime)
-##            self.draw.text((3 ,self.height/2), 'Give cur. Day #>',
-##                       font=self.font, fill=1)
-##            newD = curses.wrapper(getTime)
-
-            
-            timeCom = 'sudo date --set \''+dateFormat(str(newTime))+'\''
-            os.system(timeCom)
-            # Clear image buffer by drawing a black filled box.
-            self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-            self.draw.text((1 ,self.height/2), 'Time is now %r' % newTime,
-                       font=self.font, fill=1)
+            self.draw.text((5, self.height/2), "Set the time?",
+                           font=self.font, fill=1)
             self.update()
-            time.sleep(2)
-            self.fresh = True
+
+            # Confirm
+            answer = curses.wrapper(getConfirm)
+            self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+            if answer == True :
+                self.draw.text((self.width/2-38, self.height/2), 'SETTING TIME', font=self.font, fill=1)
+                self.update()
+                time.sleep(2)                
+                self.fresh = False
+                # Get current time
+                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)                
+                self.draw.text((3 ,self.height/2), 'Give cur. time (2400) >',
+                           font=self.font, fill=1)
+                self.update()                
+                newTime = curses.wrapper(getTime)
+                
+                # Now confirm this entries
+                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                self.draw.text((2, self.height/2), "Set time to %d?"% (newTime),
+                           font=self.font, fill=1)
+                self.update()
+                
+                conf = curses.wrapper(getConfirm)
+                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                if conf == True :
+                    ## Set system/RTC time
+                    timeCom = 'sudo date --set \''+dateFormat(str(newTime))+'\''
+                    os.system(timeCom)
+                    self.draw.text((35, self.height/2), 'RTC SET', font=self.font, fill=1)
+                    self.update()
+                    time.sleep(2)
+                    
+                    # Clear image buffer by drawing a black filled box.
+                    self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                    self.draw.text((1 ,self.height/2), 'Time is now %r' % nowt(),
+                               font=self.font, fill=1)
+                    self.update()
+                    time.sleep(2)
+                    self.fresh = True
+                else:
+                    self.draw.text((self.width/2-28, self.height/2), "Canceled SET",
+                               font=self.font, fill=1)
+            else:
+                self.draw.text((self.width/2-28, self.height/2), "Canceled CLOCK",
+                           font=self.font, fill=1)
+            
+
+
         if(i == -2):    # Manually start a recording
             
             if(self.cam.camera.recording==False):
@@ -996,9 +1050,10 @@ class Display(object):
                            font=self.font, fill=1)
                 i = 0
             elif answer == True and self.cam.camera.recording == True:
-                self.cam.stop()
                 self.draw.text((2, self.height/2), "Stopping...",
                            font=self.font, fill=1)
+                self.update()
+                self.cam.stop()
                 i = 0
             else:
                 self.draw.text((self.width/2-28, self.height/2), "Canceled",
@@ -1012,7 +1067,6 @@ class Display(object):
             self.update()
             self.fresh = True
         else:   # Show current time in tabs and decay coutdown
-            newtime = nowt()
             if(self.cam.camera.recording==True):
                 self.draw.text((self.width/2-50,self.height/2), 'Sleep in  %.2f' % round(float(self.decay),3),
                         font=self.font, fill=1)
