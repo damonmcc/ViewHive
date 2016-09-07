@@ -337,6 +337,8 @@ class Schedule(object):
         if(len(self.events)==0):     # No events
                 wpiCommands.append('BEGIN 2015-08-01 00:00:00')
                 wpiCommands.append('END	2025-07-31 23:59:59')
+                wpiCommands.append('ON H23 M59')
+                wpiCommands.append('OFF M1')
                 #   Combine all command strings into contents
                 self.content = '\n'.join(wpiCommands)
                 self.content = header+self.content
@@ -608,10 +610,6 @@ def nav(screen):
             screen.addstr(10, 1,"* nav error: %s"% inst)
             # if called during cooldown, exit loop so OLED can countdown
             tic -= 1
-##            print("*** nav error: %s"%inst)
-##            return 'e'
-##            return 'decay'
-##            action = False
         else:
             screen.addstr(4, 1,"Got nav event %s"%event)
             tic = start
@@ -729,8 +727,12 @@ def getTime(screen):
     except Exception as inst:            
         screen.addstr(11, 1,"*TIME error: %s"% inst)
     else:
-        if(time  == ''): time = 0
-        if(len(time) > 4): time = time[-4:]
+        if(len(time) < 1):
+            time = 0
+            print("Blank time entered!")
+        elif(len(time) > 4):
+            time = time[-4:]
+            print("Long entered!")
         return int(time)
     
 def getDate(screen):
@@ -983,10 +985,12 @@ class Display(object):
                 self.schedule.clearAllEvents()
                 self.draw.text((self.width/2-30, self.height/2), "DELETED!",
                            font=self.font, fill=1)                
+                self.update()
                 time.sleep(2)
                 ## Call schedule sync function
                 self.schedule.sync()
-                self.draw.text((58, self.height/2), 'SYNCHED', font=self.font, fill=1)
+                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                self.draw.text((self.width/2-30, self.height/2), 'SYNCHED', font=self.font, fill=1)
                 self.fresh = True
             else:
                 self.draw.text((self.width/2-28, self.height/2), "Canceled",
@@ -1173,25 +1177,33 @@ class Display(object):
                 self.update()
                 length = curses.wrapper(getTime)    # Length of event
 
-                # Now confirm these entries
-                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-                self.draw.text((2, self.height/2), "At %d for %d?"% (start,length),
-                           font=self.font, fill=1)
-                self.update()
-                
-                conf = curses.wrapper(getConfirm)
-                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-                if conf == True :
-                    ## Call schedule add function
-                    self.schedule.addEvent(start, length)
-                    self.draw.text((1, self.height/2), 'ADDED...', font=self.font, fill=1)
-                    ## Call schedule sync function
-                    self.schedule.sync()
-                    self.draw.text((58, self.height/2), 'SYNCHED', font=self.font, fill=1)
-                    self.fresh = True
-                else:
-                    self.draw.text((self.width/2-38, self.height/2), "Canceled SAVE",
+                #Check for invalid entries
+                if(length == 0):
+                    self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                    self.draw.text((self.width/2-38, self.height/2), "entered LEN. of 0",
                                font=self.font, fill=1)
+                    self.update()
+                    time.sleep(2)
+                else:
+                    # Now confirm these entries
+                    self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                    self.draw.text((2, self.height/2), "At %d for %d?"% (start,length),
+                               font=self.font, fill=1)
+                    self.update()
+                    
+                    conf = curses.wrapper(getConfirm)
+                    self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                    if conf == True :
+                        ## Call schedule add function
+                        self.schedule.addEvent(start, length)
+                        self.draw.text((1, self.height/2), 'ADDED...', font=self.font, fill=1)
+                        ## Call schedule sync function
+                        self.schedule.sync()
+                        self.draw.text((58, self.height/2), 'SYNCHED', font=self.font, fill=1)
+                        self.fresh = True
+                    else:
+                        self.draw.text((self.width/2-38, self.height/2), "Canceled SAVE",
+                                   font=self.font, fill=1)
             else:
                 self.draw.text((self.width/2-28, self.height/2), "Canceled ADD",
                            font=self.font, fill=1)
@@ -1286,7 +1298,7 @@ class Display(object):
             self.draw.polygon([(buf+(length*2-+off),0), (buf+length*3-off,0), (buf+length*3-off-off/2,h) , (buf+length*2-off/2,h)],
                               outline=1, fill=0)
             if(self.fresh == False):
-                self.draw.text((self.width-31, 1), "%s" % now(),  font=self.font, fill=1)
+                self.draw.text((self.width-37, 1), "%s" % nowt(),  font=self.font, fill=1)
             else:
                 self.draw.text((buf+length*2+5, 0), 'DEL',  font=self.font, fill=1)
 
@@ -1306,7 +1318,7 @@ class Display(object):
         elif(self.mode == 'TIME'):
             self.draw.polygon([(buf,0), (self.width-buf,0), (self.width-buf-off/2,h) , (buf+off/2,h)],
                               outline=1, fill=0)
-            self.draw.text((self.width-100, 1), "%s" % nowdt(),  font=self.font, fill=1)
+            self.draw.text((self.width-105, 1), "%s" % nowdt(),  font=self.font, fill=1)
         else:
             self.draw.polygon([(buf,0), (self.width-buf,0), (self.width-buf-off/2,h) , (buf+off/2,h)],
                               outline=0, fill=1)
