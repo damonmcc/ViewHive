@@ -122,17 +122,18 @@ class Recorder(object):
         self.camera.wait_recording(1)
         self.camera.stop_recording()
         shutil.copy(self.srcroot, self.dstroot)
-        print(self.convCommand)
-        conv = subprocess.Popen(self.convCommand, shell=True,
-                            cwd=self.dstroot)
-        conv_status = conv.wait()
-        if conv_status==0:
-            print ("*** Conversion complete ***")
-        else:
-            print ("**! Conversion FAILED !**")
+##        NO MORE CONVERTING TO MP4
+##        print(self.convCommand)
+##        conv = subprocess.Popen(self.convCommand, shell=True,
+##                            cwd=self.dstroot)
+##        conv_status = conv.wait()
+##        if conv_status==0:
+##            print ("*** Conversion complete ***")
+##        else:
+##            print ("**! Conversion FAILED !**")
 
         silentremove(self.srcroot)
-        silentremove("{0}{1}.h264".format(self.dstroot,self.timestamp))
+##        silentremove("{0}{1}.h264".format(self.dstroot,self.timestamp))
         print("{0} contains:".format(self.dstroot))
         p = subprocess.Popen("ls", shell=True,
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -149,7 +150,8 @@ class Recorder(object):
 
         
     def record(self):
-        # OLD standalone recording behavior
+        ### OLD standalone recording behavior
+        ### NOT USED
         # Wait for USB drive named VIEWHIVE
         waitforUSB(self.usbname)
 
@@ -830,7 +832,9 @@ class Display(object):
         self.update()
         time.sleep(1)
         ## Call schedule sync function
-        self.schedule.sync()
+##        self.schedule.sync()
+        ## Don't call now, old system time will overwrite correct RTC
+        ## Recording will not start
 
 
 
@@ -930,10 +934,10 @@ class Display(object):
         
         self.cam.camera.close()
         
-        self.mode = 'TIME'
         self.tabs()
         self.showRoom(self.mode, i)
         self.update()
+        os.system("sudo shutdown -h now")
 
     def showRoom(self, mode, i):
         if(mode == 'VIEW'): self.roomView(i)
@@ -948,7 +952,10 @@ class Display(object):
     def roomMain(self):
         # Clear image buffer by drawing a black filled box.
         self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-        self.draw.text((1,self.height/2), 'MAIN main', font=self.font, fill=1)
+        if(self.mode == 'KILL'):
+            self.draw.text((5,self.height/2), 'SHUTTING DOWN', font=self.font, fill=1)
+        else:            
+            self.draw.text((1,self.height/2), 'MAIN main', font=self.font, fill=1)
 
     
     def roomView(self, i):
@@ -1010,10 +1017,10 @@ class Display(object):
         i = i
         if(self.liveNow() == True): # If an event is scheduled for now...
             self.decay = self.start
-            self.draw.rectangle((0,0,self.width/3,5), outline=0, fill=0)
+            self.draw.rectangle((0,0,self.width-20,10), outline=0, fill=0)
             if(self.cam.camera.recording == False):
                 self.cam.start()    # Start recording scheduled event
-            else:   # Already started  scheduled even
+            else:   # Already started  scheduled event
                 self.draw.text((1,1), "RECording..",
                                font=self.font, fill=1)
         elif(self.liveNow() == False and self.cam.camera.recording == True):
@@ -1187,7 +1194,7 @@ class Display(object):
                 else:
                     # Now confirm these entries
                     self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-                    self.draw.text((2, self.height/2), "At %d for %d?"% (start,length),
+                    self.draw.text((2, self.height/2), "At %d  for  %d?"% (start,length),
                                font=self.font, fill=1)
                     self.update()
                     
