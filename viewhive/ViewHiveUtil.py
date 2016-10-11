@@ -97,7 +97,15 @@ class Recorder(object):
         self.convCommand = ''
         #####        
         print('*** Recorder born %s***\n' % self.timestamp)
-
+        print("{0} contains:".format(self.dstroot))
+        p = subprocess.Popen("ls", shell=True,
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                             cwd=self.dstroot)
+        p_status = p.wait()
+        for line in iter(p.stdout.readline, b''):
+            print (line),
+        os.system("gpio -g mode 5 out")
+        os.system("gpio -g write 5 0")
         #self.camera.led = False
 
 
@@ -113,7 +121,9 @@ class Recorder(object):
         print("*** Recording started at %s ..."% self.timestamp)
         self.camera.start_recording(self.srcroot, format='h264')
         self.camera.led = True
-        self.camera.start_preview(alpha=150)
+        os.system("gpio -g mode 5 out")
+        os.system("gpio -g write 5 1")
+        self.camera.start_preview(alpha=120)
         self.camera.annotate_text = "%s" % self.timestamp
 
 
@@ -143,6 +153,8 @@ class Recorder(object):
             print (line),
         self.camera.stop_preview()
         self.camera.led = False
+        
+        os.system("gpio -g write 5 0")
         print("Recording stopped at %s ..."% now())
 
 
@@ -217,7 +229,7 @@ def code2400(time):
         m = int(time) % 60
         h = (int(time) - m)/60
         tRaw = (h*100)+m
-        print('TRaw = %r, h was %i'% (tRaw, h))
+        print('TRaw = %r'% (tRaw))
     else:
         tRaw = int(time[0])
         
@@ -240,13 +252,13 @@ class Schedule(object):
     #   Display Schedule source file data
     def showSource(self):
         self.file = open(self.source)
-        print("Source content:",)
+        print("\nSource "+self.source+" content:",)
         print(self.file.read())
         self.file.close()
 
     #   Display cuurent Schedule content
     def showContent(self):
-        print("Schedule's current content:")
+        print("\nSchedule's current content:")
         print(self.content)
 
     #   Display list of user-defined events
@@ -272,18 +284,19 @@ class Schedule(object):
             # ON    H22  WAIT    #H1
         # converts the event list to wpi format and stores in self.content
         self.content = ''
-        version = 1.2
-        header ='''# HiveView generated schedule v%r
+        version = 1.6
+        time = now()
+        header ='''# HiveView generated schedule v%r , %r
 # Should turn on 30 minutes before sunrise and sunset everyday
 #	%r
 #
-# Recording length in comments'''% (version, self.events)
+# Recording length in comments'''% (version, time, self.events)
         wpiCommands = [""]
         i = 0
         curTime = 0
         mornBuff = 0
         def code(time, **k_parems):
-            # Convert a 2400 style time to a __:__ format or wittyPi's H__ M__ format
+            # Convert a 2400 style time to a __:__ morning format or wittyPi's H__ M__ format
             h = ''
             m = ''
             
@@ -293,11 +306,12 @@ class Schedule(object):
                 if(time>=1000): # more than 10 hours
                     if('state' in k_parems and k_parems['state'] == 'ON'): # For an ON command
                         if(timeS[2] != '0' or timeS[3] != '0'): # there are minutes
-                            h = 'H%s'% timeS[0:1]
-                            m = 'M%d'% (int(timeS[2:3])-1) # subtract 1 minute for OFF state
+                            h = 'H%s%s'% (timeS[0], timeS[1])
+                            m = '%s%s'% (timeS[2], timeS[3])
+                            m = 'M%s' % (int(m)-1) # subtract 1 minute for OFF state
                         else: # m goes from 00 to 59
-                            
-                            h = 'H%d'% (int(timeS[0:2]) - 1)
+                            h = '%s%s'% (timeS[0], timeS[1])
+                            h = 'H%d'% (int(h) - 1)
                             m = 'M59'
                         code = h+' '+m
                     else:
@@ -310,11 +324,12 @@ class Schedule(object):
                             m = 'M%s%s'% (timeS[2], timeS[3])
                             code = h+' '+m
                     
-                else:   # less than 10 hours
+                else:   # less than 10 hours, more than 1 hour
                     if('state' in k_parems and k_parems['state'] == 'ON'): # For an ON command
                         if(timeS[1] != '0' or timeS[2] != '0'): # there are minutes                            
                             h = 'H%s'% timeS[0]
-                            m = 'M%d'% (int(timeS[1:2])-1) # subtract 1 minute for OFF state
+                            m = '%s%s'% (timeS[1], timeS[2])
+                            m = 'M%s' % (int(m)-1) # subtract 1 minute for OFF state
                         else:                           
                             h = 'H%d'% (int(timeS[0]) - 1)
                             m = 'M59'
@@ -330,10 +345,13 @@ class Schedule(object):
                             code = h+' '+m
                         
             else:   # Only has a minute component
-                if('begin' in k_parems and k_parems['begin'] == 'ON'): # begining of the day
-                    code = '00:%s'% time
+                if('state' in k_parems and k_parems['state'] == 'ON'): # For an ON command
+                    code = 'M%s' % (time-1) # subtract 1 minute for OFF state
                 else:
-                    code = 'M%s'% time
+                    if('begin' in k_parems and k_parems['begin'] == 'ON'): # begining of the day
+                        code = '00:%s'% time
+                    else:
+                        code = 'M%s'% time
             return code
             
         if(len(self.events)==0):     # No events
@@ -383,7 +401,11 @@ class Schedule(object):
                         wpiCommands.append('ON\t%s\tWAIT\t#%s'% (code(2400,state="ON"),code(event['length'])))
                         wpiCommands.append('OFF\tM1')
                     else:
-                        last = 2400 - curTime+mornBuff  # stretch until next BEGIN
+                        # stretch until next BEGIN
+                        # Sbtract times correctly in regards to the 2400 format
+                        last = 2400 + mornBuff
+                        last -= curTime
+                        if(last%100 >60): last -= 40
                         wpiCommands.append('ON\t%s\tWAIT\t#%s' %(code(last, state="ON"),code(event['length'])))
                         wpiCommands.append('OFF\tM1')
                         print(curTime," + ",last," should be 2400 + ",mornBuff,"!")
@@ -414,8 +436,11 @@ class Schedule(object):
                     hours = int(code[1:len(code)])*100
                     code0000+= hours
                 if(code[0] == 'M'):
-                    mins = int(code[1:len(code)])
-                    if(mins > 59): mins = 100
+                    if(event == True):
+                        mins = int(code[1:len(code)])
+                    else:
+                        mins = int(code[1:len(code)])+1
+                        if(mins > 59): mins = 100
                     code0000+= mins
             elif(' ' in curCommand[1]):   # Hour and minute present
                 splitCode = code.split(' ')
@@ -424,7 +449,7 @@ class Schedule(object):
                     mins = int(splitCode[1][1:len(splitCode[1])])
                 else:
                     mins = int(splitCode[1][1:len(splitCode[1])])+1
-                if(mins > 59): mins = 100
+                    if(mins > 59): mins = 100
                 code0000+= hours
                 code0000+= mins
             return code0000
@@ -493,8 +518,8 @@ class Schedule(object):
         # Create an empty new event and sorted events list
         newEvent = {'start' : 0000,
                   'length' : 0000}
+        added = False
         sortedEv = []
-        
         while True:
             try:
                 newEvent['start'] = s
@@ -510,7 +535,8 @@ class Schedule(object):
             except AssertionError as strerror:
                 print("%s Try again!"% strerror),
 
-        # Create an event list sorted by start time
+        # Create a NEW event list sorted by start time
+        print("NEW event is .. at %d from %d"%(newEvent['start'], newEvent['length']))
         if(len(self.events) == 0): self.events.append(newEvent)
         elif(newEvent['start'] > self.events[len(self.events)-1]['start']):
             # new event will be the last
@@ -518,13 +544,19 @@ class Schedule(object):
         else:
             for ev in self.events:
                 if (ev['start'] < newEvent['start']): # New event is after this one
-                    print("Added ev at %d"%(ev['start']))
+                    print("Added Old ev at %d"%(ev['start']))
                     sortedEv.append(ev)
                 else:   # New event is before this one
                     #time.sleep(3)
-                    sortedEv.append(newEvent)
-                    sortedEv.append(ev)
-                    print("Added newEvent and ev at %d"%(ev['start']))
+                    # BUT has already been added
+                    if(added == True):
+                        sortedEv.append(ev)
+                        print("Added Old event at %d"%(ev['start']))
+                    else:
+                        sortedEv.append(newEvent)
+                        sortedEv.append(ev)
+                        added = True
+                        print("Added New event and ev at %d"%(ev['start']))
             if(len(sortedEv) != len(self.events)+1):
                 print("Adding error")
                 print("sortedEv len %d, events len %d" % (len(sortedEv), len(self.events)))
@@ -540,7 +572,7 @@ class Schedule(object):
     #
     #   Empty the schedule's event list
     def clearAllEvents(self):
-        print("Clearing events..."),
+        print("/n/nClearing events..."),
         newEvent = {'start' : 0000,
                   'length' : 0000}
         self.events.clear()
@@ -572,10 +604,13 @@ class Schedule(object):
         os.system(cpCom2)
         
         print("Schedule files copied ...")
+        time.sleep(3)
+
         
         # Set wittyPi apparent time        
         syncCom1 = "sudo /home/wittyPi/init.sh"
 ##        os.system(syncCom1)
+        print("Setting wittyPi apparent time ...")
         print(subprocess.check_output(["bash","-c",
                                        ". /home/wittyPi/utilities.sh; system_to_rtc"],
                                   universal_newlines = True))
@@ -754,6 +789,7 @@ def getDate(screen):
 class Display(object):
     def __init__(self, **k_parems):
         print('Display instance starting...')
+        time.sleep(10)
         RST = 24
         DC = 23
         SPI_PORT = 0
@@ -768,24 +804,12 @@ class Display(object):
             self.schedule = k_parems['schedule']
         else:
             self.schedule = Schedule("Import", "/home/wittyPi/schedules/HVScriptIMPORT.wpi")
-        print('..cam..')
-        if 'cam' in k_parems and k_parems['cam'] == True:
-            # If the assigned camera is listed...
-            time.sleep(6)
-            try:
-                recorder = Recorder()
-            except Exception as inst:                
-                screen.addstr(11, 1,"*CAM error: %s"% inst)
-                print("CAM error: %s!!"%inst)
-            else:
-                self.cam = recorder
-        else:
-            self.recorder = []
+        self.schedule.sync()
         print('...')
         self.mode = -1
         self.fresh = True
         
-        self.start = 15
+        self.start = 25
         # length of decay countdowm
         self.decay = self.start
         # initialize decay countdown
@@ -795,10 +819,24 @@ class Display(object):
         self.disp.begin()
         self.image = Image.new('1', (self.width, self.height))
         
+        print('..cam..')
+        if 'cam' in k_parems and k_parems['cam'] == True:
+            # If the assigned camera is listed...
+            try:
+                recorder = Recorder()
+            except Exception as inst:                
+            #screen.addstr(11, 1,"*CAM error: %s"% inst)
+            #NameError: name 'screen' is not found
+                print("CAM error: %s!!"%inst)
+            else:
+                self.cam = recorder
+        else:
+            self.recorder = []
+        
         print('.....')
         self.draw = ImageDraw.Draw(self.image)
         self.draw.rectangle((0,0,self.width,self.height), outline=0, fill=0)
-
+        
 ##        
 ##        self.screen = curses.initscr()
 ##        curses.echo()
@@ -937,7 +975,8 @@ class Display(object):
         self.tabs()
         self.showRoom(self.mode, i)
         self.update()
-        os.system("sudo shutdown -h now")
+##        os.system("sudo gpio mode 7 out")
+        # gpio mode 7 out intead of sudo shutdown -h now for wittypi
 
     def showRoom(self, mode, i):
         if(mode == 'VIEW'): self.roomView(i)
@@ -1267,8 +1306,16 @@ class Display(object):
             ##self.draw.line(((self.width/2,26) , (self.width/2,self.height)), fill=1)
         
             #print("%r,%r, %r ~ %r, %r"%(start,length,end, s,e))
-            #self.draw.line(((f,26) , (f,self.height)), fill=1)
-            self.draw.chord((s,30, e,self.height), -180,0, outline=1, fill=0)
+            # Draw a triangle.
+            padding = 2
+            shape_w = 4
+            bottom = self.height-padding
+            top = bottom - shape_w/3
+            self.draw.polygon([(s-shape_w/2, top), (s, bottom),
+                          (s+shape_w/2, top)], outline=255, fill=0)
+
+            #self.draw.line(((s,27) , (s,self.height)), fill=1)
+            #self.draw.chord((s,30, e,self.height), -180,0, outline=1, fill=0)
             #self.draw.line(((f, 20) , (f,32)), fill=1)
         
         #self.draw.line(((10,self.width), (20, self.height)), fill=1)
