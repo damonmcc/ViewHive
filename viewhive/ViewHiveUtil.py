@@ -105,7 +105,9 @@ class Recorder(object):
         for line in iter(p.stdout.readline, b''):
             print (line),
         os.system("gpio -g mode 5 out")
+        os.system("gpio -g mode 6 out")
         os.system("gpio -g write 5 0")
+        os.system("gpio -g write 6 0")
         #self.camera.led = False
 
 
@@ -121,8 +123,8 @@ class Recorder(object):
         print("*** Recording started at %s ..."% self.timestamp)
         self.camera.start_recording(self.srcroot, format='h264')
         self.camera.led = True
-        os.system("gpio -g mode 5 out")
         os.system("gpio -g write 5 1")
+        os.system("gpio -g write 6 1")
         self.camera.start_preview(alpha=120)
         self.camera.annotate_text = "%s" % self.timestamp
 
@@ -155,6 +157,7 @@ class Recorder(object):
         self.camera.led = False
         
         os.system("gpio -g write 5 0")
+        os.system("gpio -g write 6 0")
         print("Recording stopped at %s ..."% now())
 
 
