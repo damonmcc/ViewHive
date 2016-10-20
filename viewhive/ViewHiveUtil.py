@@ -607,22 +607,37 @@ class Schedule(object):
         os.system(cpCom2)
         
         print("Schedule files copied ...")
-        time.sleep(3)
+        time.sleep(5)
 
         
-        # Set wittyPi apparent time        
+        # Set wittyPi apparent time
+        # rtc_to_system() to overwrite system time
         syncCom1 = "sudo /home/wittyPi/init.sh"
 ##        os.system(syncCom1)
         print("Setting wittyPi apparent time ...")
         print(subprocess.check_output(["bash","-c",
                                        ". /home/wittyPi/utilities.sh; system_to_rtc"],
                                   universal_newlines = True))
+        
         # Set wittyPi schedule with its runScript.sh
         print(subprocess.check_output(["sudo", "/home/wittyPi/runScript.sh"],
                                   universal_newlines = True))
         print("Ran wittyPi system_to_rtc utility and runScript.sh ...")
 
 
+    def systemToRTC(self):
+        # Set wittyPi RTC time
+        print("Setting wittyPi RTC time ...")
+        print(subprocess.check_output(["bash","-c",
+                                       ". /home/wittyPi/utilities.sh; system_to_rtc"],
+                                  universal_newlines = True))
+
+    def RTCToSystem(self):
+        # Set system time
+        print("Setting wittyPi RTC time ...")
+        print(subprocess.check_output(["bash","-c",
+                                       ". /home/wittyPi/utilities.sh; rtc_to_system"],
+                                  universal_newlines = True))
 
 
 
@@ -791,7 +806,7 @@ def getDate(screen):
 
 class Display(object):
     def __init__(self, **k_parems):
-        print('Display instance starting...')
+        print('Display instance starting... at %s'% now())
         time.sleep(10)
         RST = 24
         DC = 23
@@ -807,7 +822,7 @@ class Display(object):
             self.schedule = k_parems['schedule']
         else:
             self.schedule = Schedule("Import", "/home/wittyPi/schedules/HVScriptIMPORT.wpi")
-        self.schedule.sync()
+        #self.schedule.sync()
         print('...')
         self.mode = -1
         self.fresh = True
@@ -968,6 +983,7 @@ class Display(object):
 
             
         # Decay is complete and not recording, SHUTDOWN
+##        self.schedule.sync()
         self.mode = 'KILL'
         self.tabs()
         self.showRoom(self.mode, i)
@@ -1126,7 +1142,7 @@ class Display(object):
                     ## Set system/RTC time
                     timeCom = 'sudo date --set \''+dateFormat(y,m,d, str(newTime))+'\''
                     os.system(timeCom)
-                    self.schedule.sync()
+                    self.schedule.systemToRTC()
                     self.draw.text((35, self.height/2), 'RTC SET', font=self.font, fill=1)
                     self.update()
                     time.sleep(2)
