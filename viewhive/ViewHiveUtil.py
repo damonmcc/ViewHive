@@ -840,18 +840,24 @@ class Display(object):
         print('..cam..')
         if 'cam' in k_parems and k_parems['cam'] == True:
             # If the assigned camera is listed...
-            try:
-                recorder = Recorder()
-            except Exception as inst:                
-            #screen.addstr(11, 1,"*CAM error: %s"% inst)
-            #NameError: name 'screen' is not found
-                print("CAM error: %s!!"%inst)
-            else:
-                self.cam = recorder
+            attempts = 0
+            while attempts < 5:
+                try:
+                    recorder = Recorder()
+                except Exception as inst:                
+                #screen.addstr(11, 1,"*CAM error: %s"% inst)
+                #NameError: name 'screen' is not found
+                    print("CAM error: %s!!"%inst)
+                    attempts += 1
+                    time.sleep(3)
+                else:
+                    self.cam = recorder                    
+                    print('...cam created..')
+                    break
         else:
-            self.recorder = []
+            self.recorder = []            
+            print('...blank cam created..')
         
-        print('.....')
         self.draw = ImageDraw.Draw(self.image)
         self.draw.rectangle((0,0,self.width,self.height), outline=0, fill=0)
         
