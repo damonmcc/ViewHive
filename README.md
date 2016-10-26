@@ -1,4 +1,4 @@
-# ViewHive v0.9.1
+# ViewHive v0.9.2
 
 ViewHive is a project to periodically record videos at scheduled times and save them to external USB storage. The file is saved as a H.264 video playable with VLC.
 
@@ -14,7 +14,6 @@ Scheduled recoring times are set with a remote while an OLED display shows the m
 
 ## Software
 * Raspbian 8.0 (jessie)
- * added a launcher script to /boot/
  * revised .bashrc to call launcher
  * revised autostart to open terminal
 * Python 3

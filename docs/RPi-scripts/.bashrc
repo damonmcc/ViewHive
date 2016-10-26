@@ -111,4 +111,6 @@ if ! shopt -oq posix; then
     . /etc/bash_completion
   fi
 fi
-/boot/vh-launcher.sh
+
+/home/pi/ViewHive/docs/RPi-scripts/vh-launcher.sh
+#/boot/vh-launcher.sh
