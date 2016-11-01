@@ -25,7 +25,9 @@ def nowt():
 def nowdt():
     # Return current date and time for display
     return dt.now().strftime("%Y/%m/%d, %H:%M")
-
+def nowdts():
+    # Return current date and time with seconds for display
+    return dt.now().strftime("%Y/%m/%d, %H:%M:%S")
 def nowti():
     # Return current time as an int
     return int(dt.now().strftime("%H%M"))
@@ -74,11 +76,11 @@ class Recorder(object):
         print('.. Recorder init.. ', end='')
         self.camera = PiCamera()
         print('.. ', end='')
-        self.camera.rotation = 180
-        self.camera.resolution = (1920, 1080)
-        self.camera.framerate = 30
-        #camera.resolution = (1296, 730)
-        #camera.framerate = 49
+        #self.camera.rotation = 180
+        #self.camera.resolution = (1920, 1080)
+        #self.camera.framerate = 30
+        self.camera.resolution = (1296, 730)
+        self.camera.framerate = 49
         self.camera.annotate_background = Color('grey')
         self.camera.annotate_foreground = Color('purple')
         print('.')
@@ -126,7 +128,7 @@ class Recorder(object):
         os.system("gpio -g write 5 1")
         os.system("gpio -g write 6 1")
         self.camera.start_preview(alpha=120)
-        self.camera.annotate_text = "%s" % self.timestamp
+        self.camera.annotate_text = "%s" % nowdts()
 
 
     def stop(self):
@@ -771,7 +773,6 @@ def getConfirm(screen):
             return True
         else: return False
         
-
 #   Get user-input time string
 def getTime(screen):
     screen.addstr(3,8,"Enter a 2400 time, press ENTER >")
@@ -804,10 +805,12 @@ def getDate(screen):
         return int(date)
 
 
+
+
 class Display(object):
     def __init__(self, **k_parems):
         print('Display instance starting... at %s'% now())
-        time.sleep(10)
+        time.sleep(1)
         RST = 24
         DC = 23
         SPI_PORT = 0
@@ -840,20 +843,17 @@ class Display(object):
         print('..cam..')
         if 'cam' in k_parems and k_parems['cam'] == True:
             # If the assigned camera is listed...
-            attempts = 0
-            while attempts < 5:
-                try:
-                    recorder = Recorder()
-                except Exception as inst:                
-                #screen.addstr(11, 1,"*CAM error: %s"% inst)
-                #NameError: name 'screen' is not found
-                    print("CAM error: %s!!"%inst)
-                    attempts += 1
-                    time.sleep(3)
-                else:
-                    self.cam = recorder                    
-                    print('...cam created..')
-                    break
+            try:
+                recorder = Recorder()
+            except Exception as inst:                
+            #screen.addstr(11, 1,"*CAM error: %s"% inst)
+            #NameError: name 'screen' is not found
+                print("CAM error: %s!!"%inst)
+                time.sleep(3)
+                self.mode = 'ERR'
+            else:
+                self.cam = recorder                    
+                print('...cam created..')
         else:
             self.recorder = []            
             print('...blank cam created..')
@@ -898,6 +898,19 @@ class Display(object):
         ## Don't call now, old system time will overwrite correct RTC
         ## Recording will not start
 
+    def shutdown(self):
+        self.mode = 'KILL'
+        self.tabs()
+        self.showRoom(self.mode, 0)
+        self.update()
+        
+        self.cam.camera.close()
+        
+        self.tabs()
+        self.showRoom(self.mode, 0)
+        self.update()
+        #os.system("sudo gpio mode 7 out")
+        #'gpio mode 7 out' intead of 'sudo shutdown -h now' for wittypi
 
 
     def startRooms(self):
@@ -905,11 +918,9 @@ class Display(object):
 
         recRes = 0.01
 ##        self.cam.start()
-        self.cam.camera.led = False
         self.eventsBar()
         self.update()
         while self.decay>0 or self.cam.camera.recording == True:   
-            
             
             if(self.mode == 'TIME'): 
                 com = curses.wrapper(navDecay)
@@ -970,38 +981,30 @@ class Display(object):
                     
             # Interpret a DECAY command due to idling
             elif(com == 'DECAY' or self.mode == 'TIME'):
-                if(self.cam.camera.recording == True and self.decay <= 0):
-                    # Recording but idle
-                    i = -3
+                if (hasattr(self, 'cam') == False):
+                    self.mode = 'ERR'
                 else:
-                    self.mode = 'TIME'
-                    self.decay -= recRes*2           
+                    if(self.cam.camera.recording == True and self.decay <= 0):
+                        # Recording but idle
+                        i = -3
+                    else:
+                        self.mode = 'TIME'
+                        self.decay -= recRes*2           
             
             if(self.fresh == True):
                 i = 0   # If this view is fresh, reset item index
             self.tabs()
+            
             self.showRoom(self.mode, i)
             self.eventsBar()
             self.update()
             #self.eventsBar()
 ##            self.draw.text((120,self.height/2), '%s' % i, font=self.font, fill=1)
             # End of while loop
-
-            
         # Decay is complete and not recording, SHUTDOWN
-##        self.schedule.sync()
-        self.mode = 'KILL'
-        self.tabs()
-        self.showRoom(self.mode, i)
-        self.update()
+        self.shutdown()
+            
         
-        self.cam.camera.close()
-        
-        self.tabs()
-        self.showRoom(self.mode, i)
-        self.update()
-##        os.system("sudo gpio mode 7 out")
-        # gpio mode 7 out intead of sudo shutdown -h now for wittypi
 
     def showRoom(self, mode, i):
         if(mode == 'VIEW'): self.roomView(i)
@@ -1018,6 +1021,8 @@ class Display(object):
         self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
         if(self.mode == 'KILL'):
             self.draw.text((5,self.height/2), 'SHUTTING DOWN', font=self.font, fill=1)
+        elif(self.mode == 'ERR'):
+            self.draw.text((5,self.height/2), 'CAMERA ERROR', font=self.font, fill=1)
         else:            
             self.draw.text((1,self.height/2), 'MAIN main', font=self.font, fill=1)
 
@@ -1078,25 +1083,31 @@ class Display(object):
     def roomTime(self, i):
         # Clear image buffer by drawing a black filled box.
         self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-        i = i
-        if(self.liveNow() == True): # If an event is scheduled for now...
-            self.decay = self.start
-            self.draw.rectangle((0,0,self.width-20,10), outline=0, fill=0)
-            if(self.cam.camera.recording == False):
-                self.cam.start()    # Start recording scheduled event
-            else:   # Already started  scheduled event
-                self.draw.text((1,1), "RECording..",
-                               font=self.font, fill=1)
-        elif(self.liveNow() == False and self.cam.camera.recording == True):
-            self.draw.rectangle((0,0,self.width/3,5), outline=0, fill=0)
-            self.draw.text((1,1), "SAVing..",
-                               font=self.font, fill=1)
-            self.update()
-            self.cam.stop()
-            self.decay = self.start
+        #i = i
+        try:
+            if(self.liveNow() == True):
+                # If an event is scheduled for now...
+                self.decay = self.start
+                self.draw.rectangle((0,0,self.width-20,10), outline=0, fill=0)
+                if(self.cam.camera.recording == False):
+                    self.cam.start()    # Start recording scheduled event
+                else:   # Already started  scheduled event
+                    self.draw.text((1,1), "RECording..",
+                                   font=self.font, fill=1)
+            elif(self.liveNow() == False and self.cam.camera.recording == True):
+                # If recording outside of schedule
+                self.draw.rectangle((0,0,self.width/3,5), outline=0, fill=0)
+                self.draw.text((1,1), "SAVing..",
+                                   font=self.font, fill=1)
+                self.update()
+                self.cam.stop()
+                self.decay = self.start
 
-        else:
-            pass
+            else:
+                pass
+        except AttributeError:
+            self.draw.text((1,1), "no CAMERA, ERR",
+                                   font=self.font, fill=1)
         
         if(i == -1):    # Setting system/RTC time
             self.draw.text((5, self.height/2), "Set the time?",
@@ -1206,9 +1217,13 @@ class Display(object):
             self.update()
             self.fresh = True
         else:   # Show current time in tabs and decay coutdown
-            if(self.cam.camera.recording==True):
-                self.draw.text((self.width/2-50,self.height/2), 'Sleep in  %.2f' % round(float(self.decay),3),
-                        font=self.font, fill=1)
+            if hasattr(self, 'cam'):
+                if self.cam.camera.recording==True:
+                    self.draw.text((self.width/2-50,self.height/2), 'Sleep in  %.2f' % round(float(self.decay),3),
+                                   font=self.font, fill=1)
+                else:
+                    self.draw.text((self.width/2-50,self.height/2), 'Shutdown in  %.2f' % round(float(self.decay),3),
+                                   font=self.font, fill=1)
             else:
                 self.draw.text((self.width/2-50,self.height/2), 'Shutdown in  %.2f' % round(float(self.decay),3),
                         font=self.font, fill=1)

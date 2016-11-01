@@ -14,8 +14,8 @@ Scheduled recoring times are set with a remote while an OLED display shows the m
 
 ## Software
 * Raspbian 8.0 (jessie)
- * revised .bashrc to call launcher
- * revised autostart to open terminal
+ * revised ~/.bashrc to launch script when terminal opens
+ * revised ~/.config/lxsession/LXDE-pi/autostart to open terminal
 * Python 3
 * Witty Pi scheduling scripts
 * LIRC
