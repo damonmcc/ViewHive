@@ -57,8 +57,19 @@ def waitforUSB(drivename):
     path = '/media/pi/'+drivename+'/'
     while os.path.exists(path) == False:
           print("Waiting for %s USB..." % drivename)
-          wait(3)
+          time.sleep(3)
     print("%s detected at %s !"% (drivename, path))
+    print("Contains:")
+    p = subprocess.Popen("ls", shell=True,
+                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                         cwd=path)
+    p_status = p.wait()
+    for line in iter(p.stdout.readline, b''):
+        print (line),
+    os.system("gpio -g mode 5 out")
+    os.system("gpio -g mode 6 out")
+    os.system("gpio -g write 5 0")
+    os.system("gpio -g write 6 0")
     
 def silentremove(filename):
     try:
@@ -99,17 +110,6 @@ class Recorder(object):
         self.convCommand = ''
         #####        
         print('*** Recorder born %s***\n' % self.timestamp)
-        print("{0} contains:".format(self.dstroot))
-        p = subprocess.Popen("ls", shell=True,
-                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                             cwd=self.dstroot)
-        p_status = p.wait()
-        for line in iter(p.stdout.readline, b''):
-            print (line),
-        os.system("gpio -g mode 5 out")
-        os.system("gpio -g mode 6 out")
-        os.system("gpio -g write 5 0")
-        os.system("gpio -g write 6 0")
         #self.camera.led = False
 
 
@@ -983,9 +983,11 @@ class Display(object):
             elif(com == 'DECAY' or self.mode == 'TIME'):
                 if (hasattr(self, 'cam') == False):
                     self.mode = 'ERR'
+                    self.shutdown()
                 else:
                     if(self.cam.camera.recording == True and self.decay <= 0):
                         # Recording but idle
+                        self.cam.camera.annotate_text = "%s" % nowdts()
                         i = -3
                     else:
                         self.mode = 'TIME'
