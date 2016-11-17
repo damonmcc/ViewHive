@@ -128,11 +128,14 @@ class Recorder(object):
         os.system("gpio -g write 5 1")
         os.system("gpio -g write 6 1")
         self.camera.start_preview(alpha=120)
+        self.camera.annotate_text = "%s, START" % nowdts()
+
+    def refresh(self):
         self.camera.annotate_text = "%s" % nowdts()
 
 
     def stop(self):
-        self.camera.annotate_text = "{0}, DONE".format(now())
+        self.camera.annotate_text = "%s, END" % nowdts()
         self.camera.wait_recording(1)
         self.camera.stop_recording()
         shutil.copy(self.srcroot, self.dstroot)
@@ -653,7 +656,7 @@ class Schedule(object):
 def nav(screen):
     screen.addstr(8,8,"Surfin >")
     start = 15000
-    # 10000 tics ~= 6.5 seconds
+    # 10000 tics ~= 6.5 seconds?
     tic = start
     screen.keypad(1)
     # halfdelay blocks for getch call for x tenths of a second
@@ -829,6 +832,7 @@ class Display(object):
         print('...')
         self.mode = -1
         self.fresh = True
+        self.manual = False
         
         self.start = 25
         # length of decay countdowm
@@ -899,6 +903,7 @@ class Display(object):
         ## Recording will not start
 
     def shutdown(self):
+        print("*** Shutting down ***")
         self.mode = 'KILL'
         self.tabs()
         self.showRoom(self.mode, 0)
@@ -987,20 +992,23 @@ class Display(object):
                 else:
                     if(self.cam.camera.recording == True and self.decay <= 0):
                         # Recording but idle
-                        self.cam.camera.annotate_text = "%s" % nowdts()
                         i = -3
                     else:
                         self.mode = 'TIME'
                         self.decay -= recRes*2           
+            ### End of navigation code
+
             
             if(self.fresh == True):
                 i = 0   # If this view is fresh, reset item index
+            if hasattr(self, 'cam'):
+                if self.cam.camera.recording==True:
+                    self.cam.refresh()
             self.tabs()
-            
             self.showRoom(self.mode, i)
             self.eventsBar()
             self.update()
-            #self.eventsBar()
+            
 ##            self.draw.text((120,self.height/2), '%s' % i, font=self.font, fill=1)
             # End of while loop
         # Decay is complete and not recording, SHUTDOWN
@@ -1093,23 +1101,27 @@ class Display(object):
                 self.draw.rectangle((0,0,self.width-20,10), outline=0, fill=0)
                 if(self.cam.camera.recording == False):
                     self.cam.start()    # Start recording scheduled event
-                else:   # Already started  scheduled event
+                else:   # Already started a scheduled event
                     self.draw.text((1,1), "RECording..",
                                    font=self.font, fill=1)
             elif(self.liveNow() == False and self.cam.camera.recording == True):
                 # If recording outside of schedule
-                self.draw.rectangle((0,0,self.width/3,5), outline=0, fill=0)
-                self.draw.text((1,1), "SAVing..",
-                                   font=self.font, fill=1)
-                self.update()
-                self.cam.stop()
-                self.decay = self.start
+                if(self.manual == True):    # Middle of a manual recording
+                    pass
+                else:           #  End of a scheduled event
+                    self.draw.rectangle((0,0,self.width/3,5), outline=0, fill=0)
+                    self.draw.text((1,1), "SAVing..",
+                                       font=self.font, fill=1)
+                    self.update()
+                    self.cam.stop()
+                    self.decay = self.start
 
             else:
                 pass
         except AttributeError:
             self.draw.text((1,1), "no CAMERA, ERR",
                                    font=self.font, fill=1)
+            self.update()
         
         if(i == -1):    # Setting system/RTC time
             self.draw.text((5, self.height/2), "Set the time?",
@@ -1184,8 +1196,7 @@ class Display(object):
             self.fresh = True
 
 
-        if(i == -2):    # Manually start a recording
-            
+        if(i == -2):    # Manually start/stop a recording
             if(self.cam.camera.recording==False):
                 self.draw.text((2, self.height/2), "Record NOW??",
                                font=self.font, fill=1)
@@ -1198,14 +1209,17 @@ class Display(object):
             self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
             if answer == True and self.cam.camera.recording == False:
                 self.cam.start()
+                self.manual = True
                 self.draw.text((2, self.height/2), "Recording...",
                            font=self.font, fill=1)
+                self.update()
                 i = 0
             elif answer == True and self.cam.camera.recording == True:
                 self.draw.text((2, self.height/2), "Stopping...",
                            font=self.font, fill=1)
                 self.update()
                 self.cam.stop()
+                self.maual = False
                 i = 0
             else:
                 self.draw.text((self.width/2-28, self.height/2), "Canceled",
@@ -1213,6 +1227,7 @@ class Display(object):
             self.update()
             time.sleep(2)
             self.fresh = True
+            
         if(i == -3):    # Sleeping during a recording
             self.draw.text((self.width/2-28, self.height/2), "SLEEPING",
                            font=self.font, fill=1)

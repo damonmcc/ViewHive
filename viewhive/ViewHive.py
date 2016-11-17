@@ -22,11 +22,13 @@ from ViewHiveUtil import *
 ##bees.showEvents()
 ##display.mode = 'VIEW'
 
+print("ViewHive initializing...")
+time.sleep(5)
 
 display = Display(cam = True)
 print('Display started!!!')
 display.welcome()
-##print('Welcome started')
+print('Welcome started')
 
 display.update()
 print('Display set!!!')
@@ -35,5 +37,5 @@ display.update()
 
 display.startRooms()
 
-print('After startRooms, this')
+print('After startRooms, ViewHive is done')
 
