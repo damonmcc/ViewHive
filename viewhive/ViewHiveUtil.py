@@ -53,23 +53,20 @@ def dateFormat(y, m, d, time):
     return dt.now().strftime(ys+"-"+ms+"-"+ds+" "+hours+":"+minutes+":00")
 
 def waitforUSB(drivename):
-    print("Looking for USB drive named %s..."% drivename)
+    print("Looking for USB named %s..."% drivename)
     path = '/media/pi/'+drivename+'/'
     while os.path.exists(path) == False:
           print("Waiting for %s USB..." % drivename)
           time.sleep(3)
     print("%s detected at %s !"% (drivename, path))
-    print("Contains:")
+    print("USB contains:")
     p = subprocess.Popen("ls", shell=True,
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                          cwd=path)
     p_status = p.wait()
     for line in iter(p.stdout.readline, b''):
         print (line),
-    os.system("gpio -g mode 5 out")
-    os.system("gpio -g mode 6 out")
-    os.system("gpio -g write 5 0")
-    os.system("gpio -g write 6 0")
+        
     
 def silentremove(filename):
     try:
@@ -110,6 +107,10 @@ class Recorder(object):
         self.convCommand = ''
         #####        
         print('*** Recorder born %s***\n' % self.timestamp)
+        os.system("sudo gpio -g mode 5 out")
+        os.system("sudo gpio -g mode 6 out")
+        os.system("sudo gpio -g write 5 0")
+        os.system("sudo gpio -g write 6 0")
         #self.camera.led = False
 
 
@@ -132,13 +133,22 @@ class Recorder(object):
 
     def refresh(self):
         self.camera.annotate_text = "%s" % nowdts()
+        os.system("gpio -g write 5 1")
+        os.system("gpio -g write 6 1")
 
 
     def stop(self):
         self.camera.annotate_text = "%s, END" % nowdts()
         self.camera.wait_recording(1)
         self.camera.stop_recording()
-        shutil.copy(self.srcroot, self.dstroot)
+        try:
+            
+            shutil.copy(self.srcroot, self.dstroot)
+        except Exception as inst:            
+            print("*SAVE error: %s"% inst)
+        else:
+            silentremove(self.srcroot)
+            
 ##        NO MORE CONVERTING TO MP4
 ##        print(self.convCommand)
 ##        conv = subprocess.Popen(self.convCommand, shell=True,
@@ -148,10 +158,8 @@ class Recorder(object):
 ##            print ("*** Conversion complete ***")
 ##        else:
 ##            print ("**! Conversion FAILED !**")
-
-        silentremove(self.srcroot)
 ##        silentremove("{0}{1}.h264".format(self.dstroot,self.timestamp))
-        print("{0} contains:".format(self.dstroot))
+        print("%s contains:" % self.dstroot)
         p = subprocess.Popen("ls", shell=True,
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              cwd=self.dstroot)
@@ -292,7 +300,7 @@ class Schedule(object):
             # ON    H22  WAIT    #H1
         # converts the event list to wpi format and stores in self.content
         self.content = ''
-        version = 1.6
+        version = 1.7
         time = now()
         header ='''# HiveView generated schedule v%r , %r
 # Should turn on 30 minutes before sunrise and sunset everyday
@@ -305,6 +313,7 @@ class Schedule(object):
         mornBuff = 0
         def code(time, **k_parems):
             # Convert a 2400 style time to a __:__ morning format or wittyPi's H__ M__ format
+            # Parameters are state="ON", begin="ON"
             h = ''
             m = ''
             
@@ -363,7 +372,7 @@ class Schedule(object):
             return code
             
         if(len(self.events)==0):     # No events
-                wpiCommands.append('BEGIN 2015-08-01 00:00:00')
+                wpiCommands.append('BEGIN 2016-11-19 00:00:00')
                 wpiCommands.append('END	2025-07-31 23:59:59')
                 wpiCommands.append('ON H23 M59')
                 wpiCommands.append('OFF M1')
@@ -384,17 +393,21 @@ class Schedule(object):
                         startRAW = event['start']
                         mornBuff = startRAW
                         start = code(startRAW, begin='ON')
-                        wpiCommands.append('BEGIN 2015-08-01 '+start+':00')
+                        wpiCommands.append('BEGIN 2016-11-19 '+start+':00')
                         wpiCommands.append('END	2025-07-31 23:59:59')                   
     ##                    wpiCommands.append('ON\t%s\tWAIT'% code(event['start'],state="ON"))
     ##                    wpiCommands.append('OFF\tM1')
                         curTime = mornBuff
                     else:
-                        wpiCommands.append('BEGIN 2015-08-01 00:00:00')
+                        wpiCommands.append('BEGIN 2016-11-19 00:00:00')
                         wpiCommands.append('END	2025-07-31 23:59:59')
                     
-                    
-                    wpiCommands.append('ON\t%s\tWAIT\t#%s'% (code(self.events[i+1]['start']-(curTime), state="ON"),code(event['length'])))
+                    gap = self.events[i+1]['start']-(curTime)
+                    if(gap%100 >= 60):    
+                        print("gap is: %s"%gap)
+                        gap -= 40
+                        print("after modulo, gap is: %s"%gap)
+                    wpiCommands.append('ON\t%s\tWAIT\t#%s'% (code(gap, state="ON"),code(event['length'])))
                     wpiCommands.append('OFF\tM1')
                     curTime = self.events[i+1]['start']
                     
@@ -404,7 +417,7 @@ class Schedule(object):
                         print("Adding morning buffer for ONLY event..."),
                         startRAW = event['start']
                         start = code(startRAW, begin='ON')
-                        wpiCommands.append('BEGIN 2015-08-01 '+start+':00')
+                        wpiCommands.append('BEGIN 2016-11-19 '+start+':00')
                         wpiCommands.append('END	2025-07-31 23:59:59')
                         wpiCommands.append('ON\t%s\tWAIT\t#%s'% (code(2400,state="ON"),code(event['length'])))
                         wpiCommands.append('OFF\tM1')
@@ -413,7 +426,10 @@ class Schedule(object):
                         # Sbtract times correctly in regards to the 2400 format
                         last = 2400 + mornBuff
                         last -= curTime
-                        if(last%100 >60): last -= 40
+                        if(last%100 >=60):
+                            print("last was: %s"%last)
+                            last -= 40 #for the minutes?
+                            print("after modulo, last is: %s"%last)
                         wpiCommands.append('ON\t%s\tWAIT\t#%s' %(code(last, state="ON"),code(event['length'])))
                         wpiCommands.append('OFF\tM1')
                         print(curTime," + ",last," should be 2400 + ",mornBuff,"!")
@@ -612,7 +628,7 @@ class Schedule(object):
         os.system(cpCom2)
         
         print("Schedule files copied ...")
-        time.sleep(5)
+        time.sleep(1)
 
         
         # Set wittyPi apparent time
