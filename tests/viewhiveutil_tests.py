@@ -86,7 +86,7 @@ def test_rooms():
     display.update()
     time.sleep(2)
 
-def test_recording():
+def test_UI():
     bees = Schedule("Bees", "ScriptUTIL.wpi")
     display = Display(schedule = bees, cam = True   )
     display.mode = 'VIEW'
@@ -96,6 +96,22 @@ def test_recording():
     display.update()
     time.sleep(2)
     display.startRooms()
+
+
+def test_recording():
+    bees = Schedule("Bees", "ScriptUTIL.wpi")
+    display = Display(schedule = bees, cam = True   )
+    display.mode = 'VIEW'
+    display.clear()
+    display.tabs()
+    display.eventsBar()
+    display.update()
+    time.sleep(2)
+    
+    display.cam.start()
+    while(display.cam.timeElaps < 10):
+        display.cam.refresh()
+    display.cam.stop()
     
     
 ##def test_map():

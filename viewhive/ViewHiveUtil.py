@@ -119,6 +119,8 @@ class Recorder(object):
         waitforUSB(self.usbname)
         # Name files with current timestamp
         self.timestamp = now()
+        self.timeElaps = 0
+        self.startTime = time.time()
         self.srcfile = '%s.h264' % self.timestamp
         self.srcroot = '/home/pi/Videos/%s' % self.srcfile
         self.convCommand = 'MP4Box -add {0}.h264 {1}.mp4'.format(self.timestamp,self.timestamp)
@@ -129,20 +131,22 @@ class Recorder(object):
         os.system("gpio -g write 5 1")
         os.system("gpio -g write 6 1")
         self.camera.start_preview(alpha=120)
-        self.camera.annotate_text = "%s, START" % nowdts()
+        self.camera.annotate_text = "%s | START" % nowdts()
 
     def refresh(self):
-        self.camera.annotate_text = "%s" % nowdts()
+        self.timeElaps = time.time() - self.startTime
+        self.camera.annotate_text = "%s | %.3f" % (nowdts() , self.timeElaps)
         os.system("gpio -g write 5 1")
         os.system("gpio -g write 6 1")
 
 
     def stop(self):
-        self.camera.annotate_text = "%s, END" % nowdts()
+        self.camera.annotate_text = "%s | %.2f END" % (nowdts(), self.timeElaps)
         self.camera.wait_recording(1)
         self.camera.stop_recording()
+        # Wait for USB drive named VIEWHIVE
+        waitforUSB(self.usbname)
         try:
-            
             shutil.copy(self.srcroot, self.dstroot)
         except Exception as inst:            
             print("*SAVE error: %s"% inst)
@@ -167,6 +171,7 @@ class Recorder(object):
         for line in iter(p.stdout.readline, b''):
             print (line),
         self.camera.stop_preview()
+        self.timeElaps = 0
         self.camera.led = False
         
         os.system("gpio -g write 5 0")

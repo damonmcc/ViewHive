@@ -23,7 +23,7 @@ from ViewHiveUtil import *
 ##display.mode = 'VIEW'
 
 print("ViewHive initializing...")
-time.sleep(5)
+time.sleep(3)
 
 display = Display(cam = True)
 print('Display started!!!')
