@@ -267,7 +267,7 @@ class Schedule(object):
         self.content = self.file.read() # Intermediary data for read/write
         self.file.close()
         self.events = []                # List of schedule events
-
+        self.version = 1.7
         self.WpiToEvents()
         
     #   Display Schedule source file data
@@ -305,13 +305,12 @@ class Schedule(object):
             # ON    H22  WAIT    #H1
         # converts the event list to wpi format and stores in self.content
         self.content = ''
-        version = 1.7
         time = now()
         header ='''# HiveView generated schedule v%r , %r
 # Should turn on 30 minutes before sunrise and sunset everyday
 #	%r
 #
-# Recording length in comments'''% (version, time, self.events)
+# Recording length in comments'''% (self.version, time, self.events)
         wpiCommands = [""]
         i = 0
         curTime = 0
@@ -915,9 +914,10 @@ class Display(object):
         # Load default font.
         font = ImageFont.truetype("electroharmonix.ttf", 12)
         self.draw.text((2, 2),    'Hello',  font=self.font, fill=255)
-        self.draw.text((2, 15), 'ViewHive v0.6!', font=self.font, fill=255)
+        self.draw.text((2, 15), 'ViewHive v%s' % self.schedule.version,
+                       font=self.font, fill=255)
         self.update()
-        time.sleep(1)
+        time.sleep(3)
         ## Call schedule sync function
 ##        self.schedule.sync()
         ## Don't call now, old system time will overwrite correct RTC
@@ -935,8 +935,8 @@ class Display(object):
         self.tabs()
         self.showRoom(self.mode, 0)
         self.update()
-        #os.system("sudo gpio mode 7 out")
-        #'gpio mode 7 out' intead of 'sudo shutdown -h now' for wittypi
+        os.system("sudo gpio mode 7 out")
+        #'gpio mode 7 out' for wittypi intead of 'sudo shutdown -h now'
 
 
     def startRooms(self):
@@ -1134,6 +1134,9 @@ class Display(object):
                     self.draw.text((1,1), "SAVing..",
                                        font=self.font, fill=1)
                     self.update()
+                    self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                    self.draw.text((2, self.height/2), "USB 'VIEWHIVE' req.",
+                           font=self.font, fill=1)
                     self.cam.stop()
                     self.decay = self.start
 
@@ -1239,6 +1242,9 @@ class Display(object):
                 self.draw.text((2, self.height/2), "Stopping...",
                            font=self.font, fill=1)
                 self.update()
+                self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+                self.draw.text((2, self.height/2), "USB 'VIEWHIVE' req.",
+                       font=self.font, fill=1)
                 self.cam.stop()
                 self.maual = False
                 i = 0
