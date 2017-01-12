@@ -1038,10 +1038,13 @@ class Display(object):
             self.showRoom(self.mode, i)
             self.eventsBar()
             self.update()
-            
-##            self.draw.text((120,self.height/2), '%s' % i, font=self.font, fill=1)
-            # End of while loop
+        # End of while loop
         # Decay is complete and not recording, SHUTDOWN
+        
+        ## Call schedule sync function
+        self.schedule.sync()
+        self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
+        self.draw.text((self.width/2-30, self.height/2), 'SYNCHED', font=self.font, fill=1)
         self.shutdown()
             
         
@@ -1196,7 +1199,7 @@ class Display(object):
                 
                 # Now confirm this entries
                 self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-                self.draw.text((2, self.height/2), "Set %r/%r/%r %d?"% (y,m,d, newTime),
+                self.draw.text((2, self.height/2), "Set %r/%r/%r %d?"% (m,d,y, newTime),
                            font=self.font, fill=1)
                 self.update()
                 
@@ -1272,7 +1275,7 @@ class Display(object):
         else:   # Show current time in tabs and decay coutdown
             if hasattr(self, 'cam'):
                 if self.cam.camera.recording==True:
-                    self.draw.text((self.width/2-50,self.height/2), 'Sleep in  %.2f' % round(float(self.decay),3),
+                    self.draw.text((self.width/2-50,self.height/2), 'Sleeping after REC',
                                    font=self.font, fill=1)
                 else:
                     self.draw.text((self.width/2-50,self.height/2), 'Shutdown in  %.2f' % round(float(self.decay),3),
