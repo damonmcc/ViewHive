@@ -518,6 +518,10 @@ class Schedule(object):
                         curTime = tempEvent['start']
                     
                     curTime+= time(curCommand[1], False)
+                    if(curTime%100 >= 60):    
+                        print("curTime (soon to be 'start') is: %s"%curTime)
+                        curTime += 40
+                        print("after modulo, curTime is: %s"%curTime)
                     comment = curCommand[len(curCommand)-1].split('#')
 
                     tempEvent['length'] = time(comment[1], True)
