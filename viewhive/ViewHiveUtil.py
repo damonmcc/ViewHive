@@ -439,7 +439,12 @@ class Schedule(object):
                         print(curTime," + ",last," should be 2400 + ",mornBuff,"!")
                 else:       # All other events
                     print("Average event ..."),
-                    wpiCommands.append('ON\t%s\tWAIT\t#%s' %(code(self.events[i+1]['start']-(curTime), state="ON"),code(event['length'])))
+                    gapA = self.events[i+1]['start']-(curTime)
+                    if(gapA%100 >= 60):    
+                        print("gap is: %s"%gapA)
+                        gapA -= 40
+                        print("after modulo, gap is: %s"%gapA)
+                    wpiCommands.append('ON\t%s\tWAIT\t#%s' %(code(gapA, state="ON"),code(event['length'])))
                     wpiCommands.append('OFF\tM1')
                     curTime = self.events[i+1]['start']
                 i+= 1
@@ -1119,7 +1124,7 @@ class Display(object):
             if(self.liveNow() == True):
                 # If an event is scheduled for now...
                 self.decay = self.start
-                self.draw.rectangle((0,0,self.width-20,10), outline=0, fill=0)
+                self.draw.rectangle((0,0,self.width-50,10), outline=0, fill=0)
                 if(self.cam.camera.recording == False):
                     self.cam.start()    # Start recording scheduled event
                 else:   # Already started a scheduled event

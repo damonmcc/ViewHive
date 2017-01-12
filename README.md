@@ -1,8 +1,11 @@
-# ViewHive v0.9.2
+# ViewHive
 
-ViewHive is a project to periodically record videos at scheduled times and save them to external USB storage. The file is saved as a H.264 video playable with VLC.
+ViewHive is a Raspberry Pi system to periodically record videos at scheduled times and save them to external USB storage. The file is saved as a H.264 video playable with VLC.
 
 Scheduled recoring times are set with a remote while an OLED display shows the menus and inputs. After a period of inactivity, the camera shuts down to conserve battery, only starting up to record or after pressing the power switch.
+
+## Instructions for Use
+* (coming soon)
 
 
 ## Parts
