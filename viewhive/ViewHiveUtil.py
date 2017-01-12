@@ -1199,7 +1199,7 @@ class Display(object):
                 
                 # Now confirm this entries
                 self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
-                self.draw.text((2, self.height/2), "Set %r/%r/%r %d?"% (m,d,y, newTime),
+                self.draw.text((1, self.height/2), "Set %r / %r / %r %d ?"% (m,d,y, newTime),
                            font=self.font, fill=1)
                 self.update()
                 
@@ -1207,7 +1207,8 @@ class Display(object):
                 self.draw.rectangle((0,12,self.width,24), outline=0, fill=0)
                 if conf == True :
                     ## Set system/RTC time
-                    timeCom = 'sudo date --set \''+dateFormat(y,m,d, str(newTime))+'\''
+                    timeCom = 'sudo date %r%r%r%r'% (str(m).zfill(2), str(d).zfill(2), str(newTime).zfill(4), str(y).zfill(4))
+                    print(timeCom)
                     os.system(timeCom)
                     self.schedule.systemToRTC()
                     self.draw.text((35, self.height/2), 'RTC SET', font=self.font, fill=1)
