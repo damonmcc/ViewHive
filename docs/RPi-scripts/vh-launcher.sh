@@ -1,7 +1,8 @@
 #!/bin/sh
 # vh-launcher.sh
 # 
-# Action: navigate to home directory, then to script directory, then execute python script in a terminal, then back home
+# Action: navigate to home directory, then to script directory,
+# then execute python script in a terminal, then back home
 
 cd /
 cd /home/pi/ViewHive/viewhive
