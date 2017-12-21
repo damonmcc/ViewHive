@@ -248,7 +248,6 @@ class menuTime:
     numerical value string,
     1 to go to submenu with digits OR numerical value string]
     """
-    #TODO Use BACK to erase last number choice and cancel
     def __init__(self, structure, ExitLabel="BACK"):
 
         # Initialize internal variables
@@ -402,7 +401,6 @@ class menuTime:
         """
         if pos is None: pos = self.key
         self.key = pos
-        # TODO handle as a time choice cancellation
         if len(self.time) == 0:
             # print("Time is blank!!!!")
             return False

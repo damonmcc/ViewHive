@@ -614,7 +614,6 @@ class Display(object):
                           outline=0, fill=255)
         # Draw text, split into two lines if too long for screen
         if len(self.navView.menuMain.displayCurrent()) > 15:
-            # TODO lower second line of text (~2 pixels)
             self.draw.polygon([(x, self.top), (x + tabWidth * tabScale, self.top),
                                (x + tabWidth * tabScale + (tabWidth / 2), self.height / 2),
                                (x + tabWidth * tabScale, self.bottom+self.padding),
@@ -884,7 +883,7 @@ class Navigation(object):
             if s:   # If selection is an action
                 if s == -1: pass    # If at top/first level do nothing
                 self.actionString = self.menuMain.action()
-            time.sleep(0.1)
+            # time.sleep(0.1)
 
         knobpi = pigpio.pi()    # Create pigpio object for
         self.dec = decoder(knobpi, rotaryPinA, rotaryPinB, rotaryPinPush, callbackR, callbackS)
@@ -1043,6 +1042,7 @@ class Recorder(object):
                 d = os.path.join(dst, item)
                 if not os.path.exists(d) or os.stat(s).st_mtime - os.stat(d).st_mtime > 1:
                     shutil.copy2(s, d)
+                    os.unlink(s)
             #  Delete with rmtree?
             # for root, dirs, files in os.walk(self.dstroot):
             #     for f in files:
