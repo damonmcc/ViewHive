@@ -1,0 +1,11 @@
+# HiveView generated schedule v3.0 , '2017-08-13_22.25.21'
+# Should turn on 30 minutes before sunrise and sunset everyday
+#	[{'start': 722, 'length': 230}, {'start': 2206, 'length': 130}]
+#
+# Recording length in comments
+BEGIN 2017-08-13 07:22:00
+END	2025-07-31 23:59:59
+ON	H14 M43	WAIT	#H2 M30
+OFF	M1
+ON	H9 M15	WAIT	#H1 M30
+OFF	M1
