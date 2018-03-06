@@ -213,7 +213,10 @@ class Schedule(object):
         print("Schedule init...")
         self.name = name
         self.source = source  # Source file
-        self.file = open(source)
+        try:
+            self.file = open(source)
+        except:
+            print("No {}, using default")
         self.content = self.file.read()  # Intermediary data for read/write
         self.file.close()
         self.events = []  # List of schedule events
@@ -259,7 +262,7 @@ class Schedule(object):
         self.content = ''
         time = now()
         header = '''# HiveView generated schedule v%r , %r
-# Should turn on 30 minutes before sunrise and sunset everyday
+# Perhaps turn on 30 minutes before sunrise and sunset everyday
 #	%r
 #
 # Recording length in comments''' % (self.version, time, self.events)
@@ -511,7 +514,8 @@ class Schedule(object):
             try:
                 newEvent['start'] = int(s)
                 newEvent['length'] = int(l)
-
+                # If length given is 60 minutes, change to 100 for 1 hour
+                if newEvent['length'] == 60: newEvent['length'] = 100
                 assert (newEvent['start'] < 2400) or (
                     newEvent['length'] < 2400), "Entered a start%d/length%d greater than 2400!" % (
                     newEvent['start'], newEvent['start'])

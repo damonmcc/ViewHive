@@ -2,7 +2,6 @@
 #
 # ViewHive menu systems: menu, menuTime, menuView
 #
-
 import pigpio
 import logging
 LOG_FORMAT = "%(Levelname)s %(asctime)s - %(message)s"
@@ -10,6 +9,7 @@ logging.basicConfig(filename="/home/pi/pywork/ViewHive/vh.log",
                     level=logging.DEBUG,
                     format=LOG_FORMAT)
 logger = logging.getLogger()
+import time
 from viewhive.rotary_encoder import *
 
 ViewHiveMenu = [
@@ -25,21 +25,22 @@ ViewHiveMenu = [
     # View menus
     [200, "Day", "exec_day_view"],
 
-    # Add menus
+    # Event Add menus
     [300, "Confirm add?", 301],
     [301, "Adding", "exec_add_conf"],
 
-    # Delete menus
-    [400, "Confirm clr?", 401],
+    # Event Clear menus
+    [400, "Confirm CLR?", 401],
     [401, "Clearing", "exec_del_events"],
 
     # Videos menus
     [700, "Copy to USB", 710],
-    [700, "View storage", 720],
+    [700, "View saved", 720],
     [700, "Delete", 730],
-    [710, "Copying", "exec_copy"],
-    [720, "Remaining:", "exec_storage"],
-    [730, "Deleting", "exec_del_storage"],
+    [710, "Copying->", "exec_copy"],
+    [720, "Saved:", "exec_storage"],
+    [730, "Confirm DEL?", 731],
+    [731, "Deleting", "exec_del_storage"],
 
     # Record menus
     [500, "Start Now?", 510],
@@ -52,6 +53,7 @@ ViewHiveMenu = [
     [600, "Time", 610],
     [600, "WIFI", 620],
     [600, "IP", 630],
+    [600, "Cam", 640],
     #   Time
     [610, "Show", "exec_time_show"],
     [610, "Set", 611],
@@ -68,10 +70,12 @@ ViewHiveMenu = [
     [625, "wifi up ..", "exec_wifi_up"],
     #   IP
     [630, "IP :", "exec_ip_show"],
+    # Cam
+    [640, "Preview", "exec_cam_prev"],
 
     # Shutdown menus
-    [100, "Do SHUTDOWN?", 110],
-    [100, "Do Soft STOP?", 120],
+    [100, "SHUTDOWN?", 110],
+    [100, "Soft STOP?", 120],
     [110, "shutdown", "shutdown"],
     [120, "soft stop", "softstop"]
 ]
@@ -143,8 +147,8 @@ class menu:
         #     self._menu.append([index, key, ExitLabel, -1])
         #     self.struct[key].append(index)
         #     print(self.struct[key])
-        print(self._menu)
         # Start at config
+        # print(self._menu)
         self.key = 7
 
     def display(self, pos=None):
@@ -363,7 +367,7 @@ class menuTime:
         """
         if pos is None: pos = self.key
         self.key = pos
-        # return
+        time.sleep(0.001)
         if isinstance(self._menu[pos][3], str):
             print("Added time now "+self.time)
             self.time += self._menu[pos][3]     # Add selection int to time
@@ -377,11 +381,11 @@ class menuTime:
         if self._menu[pos][3] == -1:     # Return a short time
             self.key = self._menu[pos][1]
             self.level -= 1
-            if self.key == 0: return -1  # or
+            if self.key == 0: return -1
             return False
         if self._menu[pos][3] == -2:    # Delete last int added to time
-            # Keep n-1 leftmost digits
             if len(self.time) > 0:
+                # Keep n-1 leftmost digits
                 if len(self.time) > 1: self.time = self.time[-(len(self.time)-1):]
                 else: self.time = ""
                 print("digit deleted!")
@@ -487,6 +491,7 @@ class menuView:
         """
         if pos is None: pos = self.key
         self.key = pos
+        if len(self._menu) == 1: return "Empty"
         # The string menuMain.key[2] is the current event's start
         # menuMain.key[3] is the current event's length
         if self._menu[pos][3] == -1:
@@ -647,6 +652,7 @@ TimeMenu2 = [
     [8, "8", "8"],
     [9, "9", "9"]
 ]
+
 
 def isInt(v):
     v = str(v).strip()

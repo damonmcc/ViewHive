@@ -8,14 +8,18 @@ import shutil
 from distutils.dir_util import copy_tree
 from multiprocessing.dummy import Pool as ThreadPool
 from viewhive.WittyPi import *
-VH_VERSION = 3.0
+VH_VERSION = "0.9.5"
 # FONT_PATH = os.environ.get("FONT_PATH", "/viewhive/GameCube.ttf")
+
+
+def progressUpdate(bytescopied):
+    print(bytescopied)
 
 
 class Display(object):
     def __init__(self, **k_parems):
         print('Display instance starting... at %s with parems:' % now(), k_parems)
-        print("Current Working Directory: {}".format(os.getcwd()))
+        # print("Current Working Directory: {}".format(os.getcwd()))
         logger.info("Display object init at {0}".format(now))
 
         time.sleep(1)
@@ -29,8 +33,8 @@ class Display(object):
         # Initialize library and display constants.
         self.disp.begin()
 
-        self.width = self.disp.width
-        self.height = self.disp.height
+        self.width = self.disp.width    # 128 pixels
+        self.height = self.disp.height  # 32 pixels
         self.padding = 4
         self.textHpad = 5
         self.shape_width = 20
@@ -51,7 +55,7 @@ class Display(object):
         # Get drawing object to draw on image.
         self.draw = ImageDraw.Draw(self.image)
 
-        print("Current Working Directory: {}".format(os.getcwd()))
+        # print("Current Working Directory: {}".format(os.getcwd()))
         self.fontDefault = ImageFont.load_default()
         # self.font = ImageFont.load("GameCube.ttf")
         self.font = ImageFont.truetype("GameCube.ttf", 6)
@@ -96,6 +100,7 @@ class Display(object):
                 logger.error("recorder creation exception: %s" % inst)
                 print("CAM error: %s!!" % inst)
                 self.mode = 'ERR'
+                self.draw.text((1, 1), 'CAM ERROR', font=self.font, fill=255)
             else:
                 self.cam = recorder
                 print('...cam created..')
@@ -132,11 +137,12 @@ class Display(object):
         x += self.shape_width + self.padding
 
         # Write two lines of text.
-        self.draw.text((x, self.top), 'Hey', font=self.font, fill=255)
-        self.draw.text((x, self.top + 10), 'you', font=self.font, fill=255)
-        # menuMain.key[2] is the current selection title
-        # self.draw.text((x, self.top + 20), self.nav.menuMain.displayCurrent(), font=self.font, fill=255)
-
+        self.draw.text((x, self.top - 2), 'Hey', font=self.font, fill=255)
+        self.draw.text((x, self.top + 8), 'you', font=self.font, fill=255)
+        self.draw.text((x - 8, self.top + 15), 'V: ' + str(VH_VERSION),
+                       font=self.font, fill=255)
+        if self.mode == 'ERR':
+            self.draw.text((1, 1), 'CAM ERROR', font=self.font, fill=255)
         self.update()
         time.sleep(3)
 
@@ -156,10 +162,15 @@ class Display(object):
                 if code1440(nowti()) == self.decay:
                     self.shutdown()
             if self.liveNow():
-                print("live!!!!!!!!")
+                # print("live!!!!!!!!")
                 if not self.cam.recording: self.cam.start()
+                # Restart shutdown counter if recording
+                self.decay = code1440(nowti()) + self.decayLength
+                # print("Decay is reset to " + str(self.decay))
             else:
                 if self.cam.recording and not self.manual: self.cam.stop()
+                # print("Cam stopped, at " + nowdts())
+                # print("Will shutdown at " + code2400(str(self.decay)))
             self.update()
 
             actionString = self.nav.menuMain.action()
@@ -168,23 +179,31 @@ class Display(object):
             elif actionString == 'exec_add_conf':
                 self.extraInfo = ''
                 self.tabEvent()
+                self.decay = code1440(nowti()) + self.decayLength
                 self.nav.menuMain.up()
             elif actionString == 'exec_del_events':
                 self.clearEvents()
+                self.decay = code1440(nowti()) + self.decayLength
+                self.nav.menuMain.up()
             elif actionString == 'exec_rec_now':
                 if self.cam.recording:
-                    print('!recording already!')
+                    # print('!recording already!')
+                    pass
                 else:
                     self.cam.start()
                     self.manual = True
+                    self.nav.menuMain.up()
             elif actionString == 'exec_stop_now':
                 self.tabCurrent()
                 self.update()
                 if self.cam.recording:
                     self.cam.stop()
                     self.manual = False
+                    self.decay = code1440(nowti()) + self.decayLength
+                    self.nav.menuMain.up()
                 else:
-                    print('!not recording!')
+                    # print('!not recording!')
+                    pass
             elif actionString == 'exec_day_view':
                 # Restart shutdown counter if events viewed
                 self.decay = code1440(nowti()) + self.decayLength
@@ -207,15 +226,23 @@ class Display(object):
                     self.nav.menuMain.up()
                     self.nav.menuMain.up()
             elif actionString == 'exec_storage':
-                res = self.viewVideos()
+                if not self.viewVideos():
+                    self.nav.menuMain.up()
             elif actionString == 'exec_del_storage':
                 self.clearVideos()
+                self.decay = code1440(nowti()) + self.decayLength
+                self.nav.menuMain.up()
+            elif actionString == 'exec_cam_prev':
+                self.cam.previewToggle()
+                self.nav.menuMain.up()
             elif actionString == 'exec_wifi_show':
-                # print(show_wifi())
-                pass
+                print(show_wifi())
             elif actionString == 'exec_ip_show':
                 self.viewIP()
                 print('IP: ' + show_ip())
+                self.update()
+                time.sleep(3)
+                self.nav.menuMain.up()
             elif actionString == 'exec_time_show':
                 print(show_time())
                 print(now())
@@ -234,15 +261,25 @@ class Display(object):
                 self.nav.menuMain.up()
             elif actionString == 'softstop':
                 print('!!stopping program!!'.format(nowdts()))
-                self.viewDeath()
-                self.update()
-                time.sleep(2)
+                sleepTic = 0.5
+                deathTics = 7
+                i = 0
+                while i < deathTics:
+                    self.viewDeath(i)
+                    self.update()
+                    time.sleep(sleepTic)
+                    i += 1
                 break
             elif actionString == 'shutdown':
                 print('!!!!SHUTTING DOWN at {}!!!!'.format(nowdts()))
-                self.viewDeath()
-                self.update()
-                time.sleep(2)
+                sleepTic = 1
+                deathTics = 8
+                i = 0
+                while i < deathTics:
+                    self.viewDeath(i)
+                    self.update()
+                    time.sleep(sleepTic)
+                    i += 1
                 self.shutdown()
             elif actionString == 1:
                 print('HI')
@@ -263,6 +300,7 @@ class Display(object):
             # self.nav.menuMain.display()
             # self.tabCurrent()
             self.timeBar()
+            self.tabViewMenu()
             self.eventsBar()
             if self.cam.recording:
                 self.dot()
@@ -278,10 +316,9 @@ class Display(object):
             #     self.navView.menuMain.display()
             # except IndexError:
             #     print('Viewing empty events?')
-            self.tabViewMenu()
-            if self.cam.recording:
-                self.cam.refresh()
-            self.update()
+            # if self.cam.recording:
+            #     self.cam.refresh()
+            # self.update()
             # print("actionString: {}".format(self.navView.actionString))
             if self.navView.actionString is None:
                 break
@@ -289,6 +326,9 @@ class Display(object):
                 return "LO exit"
 
     def viewVideos(self):
+        """
+        Create a manuView for viewing saved videos in a given path
+        """
         path = self.cam.dstroot
         videos = []
         p = subprocess.Popen("ls", shell=True,
@@ -301,9 +341,9 @@ class Display(object):
             print(temp)
             vid = temp
             videos.append(vid)
-        # if len(self.schedule.events) < 1 :
-        #     print('!NO EVENTS!')
-        #     return
+        if len(videos) < 1:
+            print('!NO VIDEOS!')
+            return False
         mv = menuView(videos, files=True)
         self.navView = Navigation(menu=mv)
         while True:
@@ -335,7 +375,7 @@ class Display(object):
         tabWidth = 30
         x = self.padding + tabWidth
         # Draw a small black filled box to clear the image.
-        self.draw.rectangle((x, self.bottom, self.width, self.height), outline=0, fill=0)
+        self.draw.rectangle((x, self.top, self.width, self.bottom), outline=0, fill=0)
         self.draw.polygon([(x, self.top), (x + tabWidth*2, self.top),
                            (x + tabWidth*2 + (tabWidth / 2)+10, self.height / 2),
                            (x + tabWidth*2, self.bottom), (x, self.bottom)
@@ -371,7 +411,7 @@ class Display(object):
         self.draw.text((self.padding/2, self.top+1),
                        'Length:', font=self.font, fill=0)
         self.draw.text((self.padding, self.height / 2 + 1),
-                       start+"-", font=self.font, fill=0)
+                       start, font=self.font, fill=0)
         length = self.chooseTime()
 
         if int(length) == 0:
@@ -389,7 +429,8 @@ class Display(object):
                                (tabWidth, self.bottom), (0, self.bottom)
                                ],
                               outline=20, fill=255)
-            self.draw.text((1, self.height / 2), 'ADDED...', font=self.font, fill=0)
+            self.draw.text((1, self.height / 2 - 3), 'ADDED...',
+                           font=self.font, fill=0)
             self.update()
             # Call schedule sync function
             self.schedule.sync()
@@ -399,7 +440,8 @@ class Display(object):
                                (tabWidth, self.bottom), (0, self.bottom)
                                ],
                               outline=20, fill=255)
-            self.draw.text((1, self.height / 2), 'SYNCED', font=self.font, fill=0)
+            self.draw.text((1, self.height / 2 - 3), 'SYNCED',
+                           font=self.font, fill=0)
             self.update()
             time.sleep(3)
 
@@ -418,10 +460,19 @@ class Display(object):
         try:
             # Call schedule clear function
             self.draw.text((1, self.height / 2), 'Clearing...', font=self.font, fill=1)
-            self.schedule.clearAllEvents()
-            # Call schedule sync function
-            self.schedule.sync()
-            time.sleep(3)
+            # Delete with unlink
+            for root, dirs, files in os.walk(self.cam.dstroot):
+                for f in files:
+                    os.unlink(os.path.join(root, f))
+                for d in dirs:
+                    shutil.rmtree(os.path.join(root, d))
+            # Clear pseudo-mounted USB directory
+            for root, dirs, files in os.walk(self.cam.usbroot):
+                for f in files:
+                    os.unlink(os.path.join(root, f))
+                for d in dirs:
+                    shutil.rmtree(os.path.join(root, d))
+            # time.sleep(3)
         except Exception as inst:
             raise
 
@@ -487,13 +538,12 @@ class Display(object):
 
             # Return if the time is at 4 digits
             if len(self.navTime.menuMain.time) > 3:
-                print("..the time is ready")
+                print("..the time is ready"+self.navTime.menuMain.time)
                 self.navTime.menuMain.display()
                 self.tabTimeMenu()
                 self.update()
-                time.sleep(2)
-                return self.navTime.menuMain.displayTime()
-
+                # time.sleep(2)
+                return self.navTime.menuMain.time
 
             # Otherwise, go up if a digit was chosen and continue
             if isinstance(self.navTime.actionString, str):
@@ -541,7 +591,7 @@ class Display(object):
 
     def tabCurrent(self):
         """Redraw the left-most tab with current menu choice"""
-        tabWidth = 70
+        tabWidth = 62
         x = self.padding
         # Draw a small black filled box to clear the image.
         self.draw.rectangle((0, 0, self.width, self.height), outline=0, fill=0)
@@ -603,9 +653,10 @@ class Display(object):
         """Draw the currently selected event details"""
         tabWidth = 30
         x = self.padding + tabWidth
-        tabScale = 3
+        tabScale = 2.5
         # Draw a small black filled box to clear the image.
-        self.draw.rectangle((x, self.top, x + tabWidth*tabScale, self.bottom), outline=0, fill=0)
+        self.draw.rectangle((x, self.top, self.width,
+                             self.bottom+self.padding), outline=0, fill=0)
         # Draw tab
         self.draw.polygon([(x, self.top), (x + tabWidth*tabScale, self.top),
                            (x + tabWidth*tabScale + (tabWidth / 2), self.height / 2),
@@ -613,7 +664,8 @@ class Display(object):
                            ],
                           outline=0, fill=255)
         # Draw text, split into two lines if too long for screen
-        if len(self.navView.menuMain.displayCurrent()) > 15:
+        textCut = 12
+        if len(self.navView.menuMain.displayCurrent()) > textCut:
             self.draw.polygon([(x, self.top), (x + tabWidth * tabScale, self.top),
                                (x + tabWidth * tabScale + (tabWidth / 2), self.height / 2),
                                (x + tabWidth * tabScale, self.bottom+self.padding),
@@ -622,11 +674,11 @@ class Display(object):
                               outline=0, fill=255)
             # ImageFont.truetype("electroharmonix.ttf"
             text = self.navView.menuMain.displayCurrent()
-            self.draw.text((x + self.padding, self.height / 2 - self.textHpad),
-                           text[:len(text) // 2],
+            self.draw.text((x + self.padding, self.height / 2 - self.textHpad-1),
+                           text[:textCut],
                            font=self.fontDefault, fill=0)
-            self.draw.text((x + self.padding, self.height / 2),
-                           text[len(text) // 2:len(text)],
+            self.draw.text((x + self.padding, self.height / 2 + 1),
+                           text[textCut:len(text)],
                            font=self.fontDefault, fill=0)
         else:
             self.draw.text((x + self.padding, self.height / 2 - self.textHpad),
@@ -652,13 +704,17 @@ class Display(object):
         # self.draw.polygon((self.width, d, self.width, self.height-d, self.width - d, self.height-d,
         #                    self.width - d/2, self.height/2, self.width - d, d), fill=255)
 
-    def viewDeath(self):
-        self.draw.polygon([(self.width/2, 0), (self.width, self.height/2),
-                          (self.height, self.width/2), (0, self.height/2)],
+    def viewDeath(self, i):
+        # Use an integer parameter to create a pattern
+        j = i * 2
+        self.draw.polygon([(self.width/2, 0 + j),
+                           (self.width - j, self.height/2),
+                           ( self.width/2, self.height - 1 - j),
+                           (0 + j, self.height/2)],
                           outline=255, fill=0)
         x = self.width/2 - 10
         d = 5
-        self.draw.ellipse((x, self.height/2, x + d, self.height/2+ d), outline=255, fill=0)
+        # self.draw.ellipse((x, self.height/2, x + d, self.height/2+ d), outline=255, fill=0)
 
     def example(self):
         # Draw a black filled box to clear the image.
@@ -738,16 +794,15 @@ class Display(object):
             s = self.width * (start / 1440)
             e = (self.width * ((start + length) / 1440))
             if start <= now < start + length:
-                print('%r >= %r and <%r' % (now, start, start + length))
+                # print('%r >= %r and <%r' % (now, start, start + length))
                 return True
-            else:
-                if self.manual: return True
-                return False
+        if self.manual: return True
+        return False
 
     def eventsBar(self):
         j = 1440  # 1440 minutes in a day
         # Clear bar buffer by drawing a black filled box.
-        self.draw.rectangle((0, 28, self.width, self.height), outline=0, fill=0)
+        self.draw.rectangle((0, 27, self.width, self.height), outline=0, fill=0)
 
         while j > 0:
             x = (self.width * (float(j) / float(1440)))
@@ -765,18 +820,27 @@ class Display(object):
             end = start + length
 
             s = (self.width * (float(start) / float(1440)))
-            # g = float(720)/float(1440)
             e = (self.width * (float(end) / float(1440)))
+            m = e - (e - s / 2)
             # self.draw.line(((self.width/2,26) , (self.width/2,self.height)), fill=1)
 
             # print("%r,%r, %r ~ %r, %r"%(start,length,end, s,e))
             padding = 2
-            shape_w = 4
-            bottom = self.height - padding
-            top = bottom - shape_w
-            self.draw.polygon([(s, bottom), (s + shape_w / 2, top),
-                               (e - shape_w / 2, top), (e, bottom), ], outline=255, fill=100)
+            shape_w = 2
+            bottom = self.height
+            top = 26
+            self.draw.polygon([(s, bottom), (s - shape_w / 2, top),
+                               (e + shape_w / 2, top), (e, bottom)],
+                              outline=255, fill=1)
 
+        # Draw decay bar on right side
+        heightMult = (self.decay-code1440(nowti()))/self.decayLength
+
+        self.draw.line(((self.width-1, self.height),
+                    (self.width-1, 0)), fill=1)
+        self.draw.line(((self.width-1, self.height),
+                    (self.width-1, self.height * heightMult)),
+                       fill=0)
             # self.draw.line(((s,27) , (s,self.height)), fill=1)
             # self.draw.chord((s,30, e,self.height), -180,0, outline=1, fill=0)
             # self.draw.line(((f, 20) , (f,32)), fill=1)
@@ -866,6 +930,10 @@ class Navigation(object):
             self.menuMain = menuDef
         self.actionString = ""
         awake = True
+        # Looking at bottom of the rotary switch with 3-pin side down:
+        # PinA: bottom right
+        # PinB: bottom left
+        # PinPush: top right
         rotaryPinA = 16
         rotaryPinB = 20
         rotaryPinPush = 26
@@ -877,13 +945,15 @@ class Navigation(object):
             if way < 0: self.menuMain.back()
 
         def callbackS(val):
-            self.dec.state = val
             # print("state={}".format(self.dec.state))
-            s = self.menuMain.select()
-            if s:   # If selection is an action
-                if s == -1: pass    # If at top/first level do nothing
-                self.actionString = self.menuMain.action()
-            # time.sleep(0.1)
+            if val:     # pressed
+                self.dec.bounce = 10
+                s = self.menuMain.select()
+                # time.sleep(1)
+                if s:   # If selection is an action
+                    if s == -1: pass    # If at top/first level do nothing
+                    self.actionString = self.menuMain.action()
+                # time.sleep(.100)
 
         knobpi = pigpio.pi()    # Create pigpio object for
         self.dec = decoder(knobpi, rotaryPinA, rotaryPinB, rotaryPinPush, callbackR, callbackS)
@@ -938,6 +1008,7 @@ class Recorder(object):
         self.startTime = 0
         self.timeElapsed = 0
         self.recording = False
+        self.preview = False
         self.recRes = 0.01  # resolution of elapsed time counter (seconds)
         #####
         #
@@ -982,7 +1053,7 @@ class Recorder(object):
         results = pool.map(self.refresh, my_array)
 
     def refresh(self):
-        print('anootating!')
+        # print('annotating!')
         self.timeElapsed = time.time() - self.startTime
         self.camera.annotate_text = "%s | %.3f" % (nowdts(), self.timeElapsed)
         os.system("gpio -g write 5 1")
@@ -990,7 +1061,8 @@ class Recorder(object):
 
     def stop(self):
         self.camera.annotate_text = "%s | %.2f END" % (nowdts(), self.timeElapsed)
-        self.camera.led = True
+        os.system("gpio -g write 5 0")
+        os.system("gpio -g write 6 0")
         self.camera.wait_recording(1)
         self.camera.stop_recording()
         self.recording = False
@@ -999,23 +1071,26 @@ class Recorder(object):
         self.timeElapsed = 0
         self.camera.led = False
 
-        os.system("gpio -g write 5 0")
-        os.system("gpio -g write 6 0")
         print("Recording stopped at %s ..." % now())
+        self.copy()
 
     def copy(self):
-        # TODO still seeing USB issue?
-        # try:
-        #     os.system("sudo mount -t vfat /dev/sda1 " + self.usbroot)
-        # except:
-        #     print("During copy, sda1 failed")
-        #     raise
-        # Mount usb stick with VIEWHIVE name
+        src = self.dstroot
+        dst = self.usbroot
+
+        def progress(bytescopied):
+            # progressUpdate(bytescopied)
+            pass
         try:
-            os.system("sudo mount -t vfat /dev/disk/by-label/VIEWHIVE "+ self.usbroot)
+            if not os.path.exists(dst):  # If there's no media/pi/VIEWHIVE directory
+                if os.path.exists('/dev/disk/by-label/VIEWHIVE'):
+                    os.makedirs(dst)
+                else:
+                    print("No VIEWHIVE USB detected!")
+            # Mount usb stick with VIEWHIVE name no matter what
+            os.system("sudo mount -t vfat /dev/disk/by-label/VIEWHIVE " + self.usbroot)
         except:
-            print("During copy, mount -t vfat /dev/disk/by-label/VIEWHIVE failed")
-            raise
+            print("FAILED sudo mount -t vfat /dev/disk/by-label/VIEWHIVE")
         # Print contents of dstroot
         print("dstroot %s contains:" % self.dstroot)
         p = subprocess.Popen("ls", shell=True,
@@ -1030,31 +1105,52 @@ class Recorder(object):
             # Copy entire Videos folder and
             # Wait for USB drive named VIEWHIVE
             # shutil.copytree(self.dstroot, waitforUSB(self.usbroot))
-            # TODO test copying, add deletion in root folder
             # copy_tree(self.dstroot, waitforUSB(self.usbroot), verbose=1)
-
-            src = self.dstroot
-            dst = self.usbroot
-            if not os.path.exists(dst):
-                os.makedirs(dst)
             for item in os.listdir(src):
                 s = os.path.join(src, item)
                 d = os.path.join(dst, item)
                 if not os.path.exists(d) or os.stat(s).st_mtime - os.stat(d).st_mtime > 1:
-                    shutil.copy2(s, d)
-                    os.unlink(s)
-            #  Delete with rmtree?
-            # for root, dirs, files in os.walk(self.dstroot):
-            #     for f in files:
-            #         os.unlink(os.path.join(root, f))
-            #     for d in dirs:
-            #         shutil.rmtree(os.path.join(root, d))
+                    # shutil.copy2(s, d)
+                    with open(s, 'rb') as fsrc:
+                        with open(d, 'wb') as fdst:
+                            self.copyfileobj(fsrc, fdst, progress)
+                    # os.unlink(s)  # Delete as you copy
+            print("usbroot %s contains:" % self.usbroot)
+            p = subprocess.Popen("ls", shell=True,
+                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                 cwd=self.usbroot)
+            for line in iter(p.stdout.readline, b''):
+                print(line),
+            # Finally, unmount USB
+            os.system("sudo umount " + self.usbroot)
+            print("..Copied to USB!")
             return True
         except Exception as inst:
             # Copy failed, print error and return False
             print("COPY error: %s" % inst)
             return False
 
+    def copyfileobj(self, fsrc, fdst, callback, length=16 * 1024):
+        copied = 0
+        while True:
+            buf = fsrc.read(length)
+            if not buf:
+                break
+            fdst.write(buf)
+            copied += len(buf)
+            callback(copied)
+
+    def previewToggle(self):
+        if not self.preview:
+            self.camera.start_preview(alpha=120)
+            self.preview = True
+            os.system("gpio -g write 5 1")
+            os.system("gpio -g write 6 1")
+        else:
+            self.camera.stop_preview()
+            self.preview = False
+            os.system("gpio -g write 5 0")
+            os.system("gpio -g write 6 0")
         # NO MORE CONVERTING TO MP4
         #        print(self.convCommand)
         #        conv = subprocess.Popen(self.convCommand, shell=True,
