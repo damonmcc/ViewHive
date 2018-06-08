@@ -148,6 +148,7 @@ class Display(object):
 
     def runNavigation(self):
         """Main camera navigation logic. """
+        # TODO fix flickering menus
         while True:
             # os.system("clear")
             # self.nav.menuMain.display()
@@ -1074,7 +1075,7 @@ class Recorder(object):
         print("Recording stopped at %s ..." % now())
         self.copy()
 
-    def copy(self):
+    def copy(self):  # TODO Prevent video storage bloat
         src = self.dstroot
         dst = self.usbroot
 

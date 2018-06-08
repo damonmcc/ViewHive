@@ -584,7 +584,7 @@ class Schedule(object):
         # truncate
         # write header comments
         # write BEGIN and END
-        # wrie events in wpi format
+        # write events in wpi format
         self.EventsToWpi()
         self.file = open(self.source, 'w')
         self.file.write(self.content)

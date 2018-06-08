@@ -23,7 +23,7 @@ ViewHiveMenu = [
     [1, "shutdown", 100],
 
     # View menus
-    [200, "Day", "exec_day_view"],
+    [200, "Day", "exec_day_view"], # TODO Say no schedule if empty
 
     # Event Add menus
     [300, "Confirm add?", 301],
@@ -49,7 +49,7 @@ ViewHiveMenu = [
     [510, "Recording..", "exec_rec_now"],
     [511, "Saving..", "exec_stop_now"],
 
-    # Config menus
+    # Config menus TODO Review options
     [600, "Time", 610],
     [600, "WIFI", 620],
     [600, "IP", 630],
