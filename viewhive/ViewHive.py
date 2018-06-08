@@ -1,4 +1,4 @@
-import viewhive.ViewHiveUtilOLD
+from viewhive.ViewHiveUtil import *
 
 # Copy custom schedule to wittyPi folders and synch wittyPi
 # bees = Schedule("Bees", "ScriptUTIL.wpi")
@@ -12,17 +12,13 @@ import viewhive.ViewHiveUtilOLD
 print("ViewHive initializing...")
 time.sleep(2)
 
+# Test full system
+print("Current Working Directory: {}".format(os.getcwd()))
 display = Display(cam=True)
-print('Display started!!!')
-display.welcome()
-print('Welcome started')
-
-display.update()
-print('Display set!!!')
-display.clear()
-display.update()
-
-display.startRooms()
+# print(display.nav.menuMain.struct)
+# self.assertTrue(display.nav.menuMain.struct[5][2], "Config")
+display.calibrate()
+display.runNavigation()
 
 # print('After startRooms, ViewHive is done')
 

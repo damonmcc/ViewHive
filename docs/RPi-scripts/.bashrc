@@ -112,5 +112,7 @@ if ! shopt -oq posix; then
   fi
 fi
 
-/home/pi/ViewHive/docs/RPi-scripts/vh-launcher.sh
-#/boot/vh-launcher.sh
+# Start full test of ViewHive menu
+cd pywork/
+cd ViewHive/
+sudo nose2 viewhive.tests.test_ViewHive.ViewHiveTests.test_menuFULL
