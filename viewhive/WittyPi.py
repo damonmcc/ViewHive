@@ -5,18 +5,21 @@ import time
 import errno
 import subprocess
 import socket
+import logging
+# import logging.handlers
+loggerWP = logging.getLogger('wittypi')
 from viewhive.Menu2Button import *
 
 # Absolute path of wittyPi source code
 wittyPi_Dir = '/home/pi/wittyPi/'
 
 
-def now() -> str:
+def now():
     # Return current time and date as a string
     return dt.now().strftime("%Y-%m-%d_%H.%M.%S")
 
 
-def nowd() -> str:
+def nowd():
     # Return current date as a string
     return dt.now().strftime("%Y-%m-%d")
 
@@ -41,7 +44,7 @@ def nowdtsShort():
     return dt.now().strftime("%d/%m/%y,  %H:%M:%S")
 
 
-def code1440(time: int) -> int:
+def code1440(time) :
     # Convert a 2400 time to 1440 time
     time_int = time
     time_string = str(time)
@@ -57,7 +60,7 @@ def code1440(time: int) -> int:
     return t_raw
 
 
-def code2400(time: int) -> int:
+def code2400(time):
     # Convert a 1440 time to 2400
     time_int = time
     time_string = str(time)
@@ -65,7 +68,7 @@ def code2400(time: int) -> int:
         m = time_int % 60  # minutes will be the remainder after removing hours
         h = (time_int - m) / 60  # without minutes, time only consists of hours
         t_raw = (h * 100) + m  # shifting hours 2 digits and adding minutes
-        # print('TRaw = %r'% (tRaw))
+        # loggerWP.debug('TRaw = %r'% (tRaw))
     else:
         t_raw = int(time_string[0])
 
@@ -98,29 +101,29 @@ def spotlight_check(gpio):
 
 
 def waitforUSB(drivename):
-    print("Looking for USB named %s..." % drivename)
+    loggerWP.debug("Looking for USB named %s..." % drivename)
     path = drivename
     attempts = 0
     while attempts < 10:
         if not os.path.exists(path):
-            print("Waiting for %s USB at %s..." % (drivename, path))
+            loggerWP.debug("Waiting for %s USB at %s..." % (drivename, path))
             time.sleep(3)
         attempts += 1
-    print("%s detected at %s !" % (drivename, path))
-    # print("USB contains:")
+    loggerWP.debug("%s detected at %s !" % (drivename, path))
+    # loggerWP.debug("USB contains:")
     # p = subprocess.Popen("ls", shell=True,
     #                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
     #                      cwd=path)
     # p_status = p.wait()
     # for line in iter(p.stdout.readline, b''):
-    #     print(line),
+    #     loggerWP.debug(line)
     return path
 
 
 def silentremove(filename):
     try:
         os.remove(filename)
-        print("*** Deleted: ", filename)
+        loggerWP.debug("*** Deleted: ", filename)
     except OSError as e:
         if e.errno != errno.ENOENT:  # no such file or directory
             raise  # re-raise exception if a different error occured
@@ -135,12 +138,12 @@ def sync_time():
     # Sync system and RTC times with WittyPi script
     # If RTC is good, writes to system
     # If RTC is old OR internet detected, writes to RTC
-    print("Syncing RTC/system times ...")
-    print("Curent Working Directory: {}".format(os.getcwd()))
+    loggerWP.info("Syncing RTC/system times ...")
+    loggerWP.info("Current Working Directory: {}".format(os.getcwd()))
     # time.sleep(2)
     oldDir = os.getcwd()
     os.chdir(wittyPi_Dir)
-    print(subprocess.check_output(["bash", "-c",
+    loggerWP.info(subprocess.check_output(["bash", "-c",
                                    ". /home/pi/wittyPi/syncTime.sh"],
                                   universal_newlines=True))
     os.chdir(oldDir)
@@ -152,23 +155,23 @@ def set_system_time(MMDD, time, year):
     # e.g.sudo date 120622432007.55 for December 6, 2007, 22:43:55
     timeCom = 'sudo date %r%r%r' % (
         str(MMDD).zfill(4), str(time).zfill(4), str(year).zfill(4))
-    print(timeCom)
+    loggerWP.info(timeCom)
     os.system(timeCom)
     systemToRTC()
 
 
 def systemToRTC():
     # Set wittyPi RTC time
-    print("Setting wittyPi RTC time ...")
-    print(subprocess.check_output(["bash", "-c",
+    loggerWP.info("Setting wittyPi RTC time ...")
+    loggerWP.info(subprocess.check_output(["bash", "-c",
                                    ". /home/pi/wittyPi/utilities.sh; system_to_rtc"],
                                   universal_newlines=True))
 
 
 def RTCToSystem():
     # Set system time
-    print("Setting wittyPi RTC time ...")
-    print(subprocess.check_output(["bash", "-c",
+    loggerWP.info("Setting wittyPi RTC time ...")
+    loggerWP.info(subprocess.check_output(["bash", "-c",
                                    ". /homepi/wittyPi/utilities.sh; rtc_to_system"],
                                   universal_newlines=True))
 
@@ -180,21 +183,22 @@ def show_wifi():
     sock.connect(("8.8.8.8", 80))
     wifi = socket.gethostname()
     sock.close()
+    loggerWP.info("Current WIFI is: " + wifi)
     return wifi
 
 
 def wifi_down():
     # Turn off wifi
-    print('Turning WIFI off...')
+    loggerWP.debug('Turning WIFI off...')
     os.system("sudo ifdown wlan0")
-    print('WIFI OFF')
+    loggerWP.debug('WIFI OFF')
 
 
 def wifi_up():
     # Turn on wifi
-    print('Turning WIFI on...')
+    loggerWP.debug('Turning WIFI on...')
     os.system("sudo ifup wlan0")
-    print('WIFI ON')
+    loggerWP.debug('WIFI ON')
 
 
 def show_ip():
@@ -203,6 +207,7 @@ def show_ip():
         sock.connect(("8.8.8.8", 80))
         ip = sock.getsockname()[0]
         sock.close()
+        loggerWP.info("Current IP addr. is: " + ip)
         return ip
     except:
         return 'no IP addr!'
@@ -210,41 +215,41 @@ def show_ip():
 
 class Schedule(object):
     def __init__(self, name, source):
-        print("Schedule init...")
+        loggerWP.debug("Schedule init...")
         self.name = name
         self.source = source  # Source file
         try:
             self.file = open(source)
         except:
-            print("No {}, using default")
+            loggerWP.debug("No schedule source, using default")
         self.content = self.file.read()  # Intermediary data for read/write
         self.file.close()
         self.events = []  # List of schedule events
         self.version = 3.0
-        print("Schedule V {} created from {}:".format(self.version, self.source))
+        loggerWP.info("Schedule V {} created from {}:".format(self.version, self.source))
         self.WpiToEvents()
-        print("Schedule init complete.")
+        loggerWP.debug("Schedule init complete.")
 
     #   Display Schedule source file data
     def showSource(self):
         self.file = open(self.source)
-        print("\nSource " + self.source + " content:", )
-        print(self.file.read())
+        loggerWP.debug("\nSource " + self.source + " content:", )
+        loggerWP.debug(self.file.read())
         self.file.close()
 
     #   Display current Schedule content
     def showContent(self):
-        print("\nSchedule's current content:")
-        print(self.content)
+        loggerWP.debug("\nSchedule's current content:")
+        loggerWP.debug(self.content)
 
     #   Display list of user-defined events
     def showEvents(self):
-        print("All events:")
+        loggerWP.debug("All events:")
         for event in self.events:
             start = event['start']
             end = code2400(code1440(event['start']) + code1440(event['length']))
-            print("From %04d to %04d" % (start, end))
-        print("\n")
+            loggerWP.debug("From %04d to %04d" % (start, end))
+        loggerWP.debug("\n")
 
     #   Convert an events list to Witty Pi schedule text
     def EventsToWpi(self):
@@ -278,7 +283,7 @@ class Schedule(object):
             m = ''
 
             timeS = str(time)
-            print(": " + "timeS: " + timeS + " curTime: " + str(curTime))
+            loggerWP.debug(": " + "timeS: " + timeS + " curTime: " + str(curTime))
             if time >= 100:  # Has an hour component
                 if time >= 1000:  # more than 10 hours
                     if 'state' in k_parems and k_parems['state'] == 'ON':  # For an ON command
@@ -342,12 +347,12 @@ class Schedule(object):
 
         else:
             for event in self.events:  # For each event in the list...
-                print("Event %d: %04d to %04d" % (i, event['start'], (event['start'] + event['length'])))
+                loggerWP.debug("Event %d: %04d to %04d" % (i, event['start'], (event['start'] + event['length'])))
 
                 if len(self.events) > 1 and i == 0:  # First event
-                    print("First event ..."),
+                    loggerWP.debug("First event ...")
                     if event['start'] > 0:  # If starting after midnight, add morning buffer
-                        print("Adding morning buffer ..."),
+                        loggerWP.debug("Adding morning buffer ...")
                         startRAW = event['start']
                         mornBuff = startRAW
                         start = code(startRAW, begin='ON')
@@ -362,17 +367,17 @@ class Schedule(object):
 
                     gap = self.events[i + 1]['start'] - curTime
                     if gap % 100 >= 60:
-                        print("gap is: %s" % gap)
+                        loggerWP.debug("gap is: %s" % gap)
                         gap -= 40
-                        print("after modulo, gap is: %s" % gap)
+                        loggerWP.debug("after modulo, gap is: %s" % gap)
                     wpiCommands.append('ON\t%s\tWAIT\t#%s' % (code(gap, state="ON"), code(event['length'])))
                     wpiCommands.append('OFF\tM1')
                     curTime = self.events[i + 1]['start']
 
                 elif i == len(self.events) - 1:  # Last or only event
-                    print("Last (or only?) event ..."),
+                    loggerWP.debug("Last (or only?) event ...")
                     if i == 0:  # Only event
-                        print("Adding morning buffer for ONLY event..."),
+                        loggerWP.debug("Adding morning buffer for ONLY event...")
                         startRAW = event['start']
                         start = code(startRAW, begin='ON')
                         wpiCommands.append('BEGIN 2016-11-19 ' + start + ':00')
@@ -385,21 +390,21 @@ class Schedule(object):
                         last = 2400 + mornBuff
                         last -= curTime
                         if last % 100 >= 60:
-                            print("last was: %s" % last)
+                            loggerWP.debug("last was: %s" % last)
                             last -= 40  # for the minutes?
-                            print("after modulo, last is: %s" % last)
+                            loggerWP.debug("after modulo, last is: %s" % last)
                         wpiCommands.append('ON\t%s\tWAIT\t#%s' % (code(last, state="ON"), code(event['length'])))
                         wpiCommands.append('OFF\tM1')
-                        print(curTime, " + ", last, " should be 2400 + ", mornBuff, "!")
+                        loggerWP.debug(curTime, " + ", last, " should be 2400 + ", mornBuff, "!")
                 else:  # All other events
-                    print("Average event ..."),
+                    loggerWP.debug("Average event ...")
                     gapA = self.events[i + 1]['start'] - curTime
                     if gapA % 100 >= 60 or gapA + (self.events[i]['start'] % 100) >= 60:
                         # (eg. 1350 start to 1405 gives gap of 55 instead of 15
-                        print("gap is over 60 or crosses an hour mark")
-                        print("gap is: %s" % gapA)
+                        loggerWP.debug("gap is over 60 or crosses an hour mark")
+                        loggerWP.debug("gap is: %s" % gapA)
                         gapA -= 40
-                        print("after modulo, gap is: %s" % gapA)
+                        loggerWP.debug("after modulo, gap is: %s" % gapA)
                     wpiCommands.append('ON\t%s\tWAIT\t#%s' % (code(gapA, state="ON"), code(event['length'])))
                     wpiCommands.append('OFF\tM1')
                     curTime = self.events[i + 1]['start']
@@ -411,10 +416,11 @@ class Schedule(object):
 
     # Convert Witty Pi schedule text to an events list
     def WpiToEvents(self):
-        wpiLines = self.content.split('\n')
+        wpiLines = self.content.split('\n') # Array of all lines from schedule file
         tempEvent = self.clearEvent()
         i = 0
         curLength = 0
+        loggerWP.debug("WpiToEvents: converting schedule file to events")
 
         # converts the wpi time codes to 0000 formatted time int
         def time(code, event):
@@ -444,26 +450,26 @@ class Schedule(object):
 
         #  While reading header
         while len(wpiLines[i]) < 1 or wpiLines[i][0] == '#':
-            print(i, " ", wpiLines[i])
+            loggerWP.debug("%s %s" % (i, wpiLines[i]))
             i += 1
-        print(i, " ", wpiLines[i])  # BEGIN
+        loggerWP.debug("%s %s" % (i, wpiLines[i]))  # BEGIN
         bSplit = wpiLines[i].split(' ')
         bTime = dt.strptime(bSplit[len(bSplit) - 1], "%H:%M:%S")
 
         if bTime.hour or bTime.minute != 0:
-            print("Beginning has a non-zero time %r:%r!!!" % (bTime.hour, bTime.minute))
+            loggerWP.debug("Beginning has a non-zero time %r:%r!!!" % (bTime.hour, bTime.minute))
 
         i += 1
-        print(i, " ", wpiLines[i])  # END
+        loggerWP.debug("%s %s" % (i, wpiLines[i]))  # END
         i += 1
         curTime = 0
 
         # While reading WPI command lines
         while i < len(wpiLines):
             curCommand = wpiLines[i].split('\t')
-            print(i, " ", curCommand),
+            loggerWP.debug("%s %s" % (i, curCommand))
             curType = curCommand[0]
-            # print("%s command Length: %d"% (curType, curLength))
+            loggerWP.debug("%s command Length: %d" % (curType, curLength))
             if curType == 'ON':
                 #   If there's a recording length comment
                 if '#' in curCommand[len(curCommand) - 1]:
@@ -474,13 +480,13 @@ class Schedule(object):
 
                     curTime += time(curCommand[1], False)
                     if curTime % 100 >= 60:
-                        print("curTime (soon to be 'start') is: %s" % curTime)
+                        loggerWP.debug("curTime (soon to be 'start') is: %s" % curTime)
                         curTime += 40
-                        print("after modulo, curTime is: %s" % curTime)
+                        loggerWP.debug("after modulo, curTime is: %s" % curTime)
                     comment = curCommand[len(curCommand) - 1].split('#')
 
                     tempEvent['length'] = time(comment[1], True)
-                    print("Length is %d" % tempEvent['length']),
+                    loggerWP.debug("Length is %d" % tempEvent['length'])
                     # tempEvent['end'] = tempEvent['start']+time(comment[1])-1
                     self.events.append(tempEvent)
                     self.showEvents()
@@ -491,20 +497,20 @@ class Schedule(object):
                 else:
                     curTime += time(curCommand[1], False)
                     tempEvent = self.clearEvent()
-                    print("ON Gap ending at %d, not recording" % curTime)
+                    loggerWP.debug("ON Gap ending at %d, not recording" % curTime)
                     i += 1
 
             elif curType == 'OFF':
                 tempEvent['start'] = curTime
                 i += 1
             else:
-                print("NON-command on this line ", curCommand)
+                loggerWP.debug("NON-command on this line " + curCommand)
                 i += 1
 
     #
     #   Ask for and append a new event entry (start/end times)
     def addEvent(self, s, l):
-        print("Adding an event ... "),
+        loggerWP.debug("Adding an event ... ")
         # Create an empty new event and sorted events list
         newEvent = {'start': 0000,
                     'length': 0000}
@@ -523,15 +529,15 @@ class Schedule(object):
                 break
 
             except ValueError:
-                print("Not a valid time! Quit?"),
+                loggerWP.debug("Not a valid time! Quit?")
                 if self.confirmed():
                     return
             except AssertionError as strerror:
-                print("%s Try again!" % strerror),
+                loggerWP.error(strerror),
                 break
 
         # Create a NEW event list sorted by start time
-        print("NEW event is .. at %d from %d" % (newEvent['start'], newEvent['length']))
+        loggerWP.debug("NEW event is .. at %d from %d" % (newEvent['start'], newEvent['length']))
         if len(self.events) == 0:
             self.events.append(newEvent)
         elif newEvent['start'] > self.events[len(self.events) - 1]['start']:
@@ -540,38 +546,38 @@ class Schedule(object):
         else:
             for ev in self.events:
                 if ev['start'] < newEvent['start']:  # New event is after this one
-                    print("Added Old ev at %d" % (ev['start']))
+                    loggerWP.debug("Added Old ev at %d" % (ev['start']))
                     sortedEv.append(ev)
                 else:  # New event is before this one
                     # time.sleep(3)
                     # BUT has already been added
                     if added:
                         sortedEv.append(ev)
-                        print("Added Old event at %d" % (ev['start']))
+                        loggerWP.debug("Added Old event at %d" % (ev['start']))
                     else:
                         sortedEv.append(newEvent)
                         sortedEv.append(ev)
                         added = True
-                        print("Added New event and ev at %d" % (ev['start']))
+                        loggerWP.debug("Added New event and ev at %d" % (ev['start']))
             if len(sortedEv) != len(self.events) + 1:
-                print("Adding error")
-                print("sortedEv len %d, events len %d" % (len(sortedEv), len(self.events)))
+                loggerWP.error("Adding error")
+                loggerWP.error("sortedEv len %d, events len %d" % (len(sortedEv), len(self.events)))
 
-            print("sortedEv len %d, events len %d" % (len(sortedEv), len(self.events)))
+            loggerWP.debug("sortedEv len %d, events len %d" % (len(sortedEv), len(self.events)))
             self.events = list(sortedEv)
-            print("sortedEv len %d, events len %d" % (len(sortedEv), len(self.events)))
+            loggerWP.debug("sortedEv len %d, events len %d" % (len(sortedEv), len(self.events)))
 
-        print("New event added! There are %d events:" % len(self.events))
+        loggerWP.info("New event added! There are %d events:" % len(self.events))
         self.showEvents()
 
     #
     #   Empty the schedule's event list
     def clearAllEvents(self):
-        print("/n/nClearing events..."),
+        loggerWP.debug("/n/nClearing events..."),
         newEvent = {'start': 0000,
                     'length': 0000}
         self.events.clear()
-        print("Events cleared! There are %d events:" % len(self.events))
+        loggerWP.info("Events cleared! There are %d events:" % len(self.events))
 
     #   Return a blank event item
     def clearEvent(self):
@@ -588,10 +594,10 @@ class Schedule(object):
         self.EventsToWpi()
         self.file = open(self.source, 'w')
         self.file.write(self.content)
-        print("Schedule source written ...")
+        loggerWP.debug("Schedule source written ...")
         self.file.close()
         workingDir = os.getcwd()
-        print("Curent Working Directory: {}".format(workingDir))
+        loggerWP.debug("Current Working Directory: {}".format(workingDir))
         os.chdir('/')
 
         # Copy local schedule file to wittyPi directories
@@ -599,22 +605,22 @@ class Schedule(object):
         cpCom2 = 'sudo cp -v ' + self.source + ' /home/pi/wittyPi/schedule.wpi'
         # os.system(cpCom1)
         os.system(cpCom2)
-        print("Schedule files copied ...")
+        loggerWP.debug("Schedule files copied ...")
 
         # Set wittyPi apparent time
         # rtc_to_system() to overwrite system time
         # syncCom1 = "sudo /home/pi/wittyPi/init.sh"
         # os.system(syncCom1)
-        # print("Setting wittyPi apparent time ...")
+        # loggerWP.debug("Setting wittyPi apparent time ...")
         # os.system('bash -c . /home/pi/wittyPi/utilities.sh; system_to_rtc')
 
         systemToRTC()
         # Set wittyPi schedule with its runScript.sh
         # os.system('sudo /home/pi/wittyPi/utilities.sh system_to_rtc')
         os.system('sudo /home/pi/wittyPi/runScript.sh')
-        # print(subprocess.check_output(["sudo", "/home/wittyPi/runScript.sh"],
+        # loggerWP.debug(subprocess.check_output(["sudo", "/home/wittyPi/runScript.sh"],
         #                               universal_newlines=True))
-        print("Ran system_to_rtc and runScript.sh ...")
+        loggerWP.debug("Ran system_to_rtc and runScript.sh ...")
 
     def confirmed(self):
         pass

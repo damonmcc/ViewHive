@@ -101,13 +101,25 @@ class ViewHiveTests(unittest.TestCase):
 
     def test_menuFULL(self):
         # Test full system
+        # Log to a file, max size of 5 MB
+        log_filename = 'ViewHive.log'
+        file_handler = logging.handlers.RotatingFileHandler(log_filename, mode='a',
+                                                        maxBytes=5*1024*1024, backupCount=10)
+        # file_handler = logging.FileHandler(log_filename)  # append to log file
+        fmt = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        file_handler.setFormatter(fmt)
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
+        # root_logger.handlers.clear()
+        root_logger.addHandler(file_handler)
+
         print("test_menuFULL...")
         print("Current Working Directory: {}".format(os.getcwd()))
-        display = Display(cam=True)
+        displayFull = Display(cam=True)
         # print(display.nav.menuMain.struct)
         # self.assertTrue(display.nav.menuMain.struct[5][2], "Config")
-        display.calibrate()
-        display.runNavigation()
+        displayFull.calibrate()
+        displayFull.runNavigation()
 
 
 if __name__ == '__main__':

@@ -5,10 +5,10 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 import shutil
-from distutils.dir_util import copy_tree
 from multiprocessing.dummy import Pool as ThreadPool
 from viewhive.WittyPi import *
-VH_VERSION = "0.9.5"
+loggerVH = logging.getLogger('vhutil')
+VH_VERSION = "0.9.6"
 # FONT_PATH = os.environ.get("FONT_PATH", "/viewhive/GameCube.ttf")
 
 
@@ -18,10 +18,9 @@ def progressUpdate(bytescopied):
 
 class Display(object):
     def __init__(self, **k_parems):
-        print('Display instance starting... at %s with parems:' % now(), k_parems)
-        # print("Current Working Directory: {}".format(os.getcwd()))
-        logger.info("Display object init at {0}".format(now))
-
+        loggerVH.info('Display instance starting, at %s with parems:' % now(), k_parems)
+        loggerVH.debug("Display initiated")
+        #TODO Replace prints with logging
         time.sleep(1)
         RST = 24
         DC = 23
@@ -55,30 +54,33 @@ class Display(object):
         # Get drawing object to draw on image.
         self.draw = ImageDraw.Draw(self.image)
 
-        # print("Current Working Directory: {}".format(os.getcwd()))
+        # loggerVH.debug("Current Working Directory: {}".format(os.getcwd()))
+        #TODO Review font choices
         self.fontDefault = ImageFont.load_default()
         # self.font = ImageFont.load("GameCube.ttf")
-        self.font = ImageFont.truetype("GameCube.ttf", 6)
-        self.fontSmall = ImageFont.truetype("GameCube.ttf", 7)
+        self.font = ImageFont.truetype("viewhive/GameCube.ttf", 6)
+        self.fontSmall = ImageFont.truetype("viewhive/GameCube.ttf", 7)
         self.extraInfo = ''
 
-        print('..schedule..')
+        loggerVH.debug('..schedule..')
         if 'schedule' in k_parems:
             # If the assigned schedule is listed...
             self.schedule = k_parems['schedule']
         else:
-            print('..Using VHScriptIMPORT from wittyPi..')
+            loggerVH.debug('..Using VHScriptIMPORT from wittyPi..')
             self.schedule = Schedule("Import", "/home/pi/wittyPi/schedules/VHScriptIMPORT.wpi")
         # Call schedule sync function
         self.schedule.sync()
-        print('...')
+        loggerVH.debug('...')
 
         # Create a navigation object with menus and knob features
-        print('..navigation..')
+        loggerVH.debug('..navigation..')
         self.nav = Navigation()
+        # Create a navigation object for time entry
         self.navTime = Navigation(menu=menuTime)
+        # Create a navigation object for viewing events
         self.navView = Navigation(menu=menuView(self.schedule.events))
-        print('...')
+        loggerVH.debug('...')
 
         self.mode = -1
         self.fresh = True
@@ -86,10 +88,10 @@ class Display(object):
 
         # Length of decay countdown in minutes
         self.decayLength = 5
-        # Initialize decay countdown
+        # Initialize decay countdown: self.decay is a future time to shutdown
         self.decay = code1440(nowti()) + self.decayLength
 
-        print('..cam..')
+        loggerVH.debug('..cam..')
         if 'cam' in k_parems and k_parems['cam']:
             # If cam is listed as True...
             try:
@@ -97,16 +99,15 @@ class Display(object):
             except Exception as inst:
                 # screen.addstr(11, 1,"*CAM error: %s"% inst)
                 # NameError: name 'screen' is not found
-                logger.error("recorder creation exception: %s" % inst)
-                print("CAM error: %s!!" % inst)
+                loggerVH.error("Recorder/camera creation exception: %s" % inst)
                 self.mode = 'ERR'
                 self.draw.text((1, 1), 'CAM ERROR', font=self.font, fill=255)
             else:
                 self.cam = recorder
-                print('...cam created..')
+                loggerVH.debug('...cam created..')
         else:
             self.recorder = []
-            print('...blank cam created..')
+            loggerVH.warning('...blank cam created..')
 
     def update(self):
         """Refresh display."""
@@ -148,7 +149,7 @@ class Display(object):
 
     def runNavigation(self):
         """Main camera navigation logic. """
-        # TODO fix flickering menus
+        loggerVH.info('display.runNavigation initiated')
         while True:
             # os.system("clear")
             # self.nav.menuMain.display()
@@ -167,10 +168,8 @@ class Display(object):
                 if not self.cam.recording: self.cam.start()
                 # Restart shutdown counter if recording
                 self.decay = code1440(nowti()) + self.decayLength
-                # print("Decay is reset to " + str(self.decay))
             else:
                 if self.cam.recording and not self.manual: self.cam.stop()
-                # print("Cam stopped, at " + nowdts())
                 # print("Will shutdown at " + code2400(str(self.decay)))
             self.update()
 
@@ -208,7 +207,6 @@ class Display(object):
             elif actionString == 'exec_day_view':
                 # Restart shutdown counter if events viewed
                 self.decay = code1440(nowti()) + self.decayLength
-                print("Decay is reset to " + str(self.decay))
                 res = self.viewEvents()
             elif actionString == "exec_copy":
                 self.extraInfo = 'USB...'
@@ -226,7 +224,9 @@ class Display(object):
                     time.sleep(4)
                     self.nav.menuMain.up()
                     self.nav.menuMain.up()
+                self.decay = code1440(nowti()) + self.decayLength
             elif actionString == 'exec_storage':
+                self.decay = code1440(nowti()) + self.decayLength
                 if not self.viewVideos():
                     self.nav.menuMain.up()
             elif actionString == 'exec_del_storage':
@@ -236,6 +236,7 @@ class Display(object):
             elif actionString == 'exec_cam_prev':
                 self.cam.previewToggle()
                 self.nav.menuMain.up()
+                self.decay = code1440(nowti()) + self.decayLength
             elif actionString == 'exec_wifi_show':
                 print(show_wifi())
             elif actionString == 'exec_ip_show':
@@ -243,6 +244,7 @@ class Display(object):
                 print('IP: ' + show_ip())
                 self.update()
                 time.sleep(3)
+                self.decay = code1440(nowti()) + self.decayLength
                 self.nav.menuMain.up()
             elif actionString == 'exec_time_show':
                 print(show_time())
@@ -272,7 +274,7 @@ class Display(object):
                     i += 1
                 break
             elif actionString == 'shutdown':
-                print('!!!!SHUTTING DOWN at {}!!!!'.format(nowdts()))
+                loggerVH.warning('!!!!SHUTTING DOWN at {}!!!!'.format(nowdts()))
                 sleepTic = 1
                 deathTics = 8
                 i = 0
@@ -283,17 +285,22 @@ class Display(object):
                     i += 1
                 self.shutdown()
             elif actionString == 1:
-                print('HI')
+                loggerVH.debug('HI')
             elif actionString == -1:
-                print('EXIT FROM TOP MENU')
+                loggerVH.warning('EXIT FROM TOP MENU')
             # else:
+                # loggerVH.debug(actionString)
                 # print(actionString)
             self.update()
 
     def viewEvents(self):
         if len(self.schedule.events) < 1:
-            print('!NO EVENTS!')
+            # loggerVH.debug('!NO EVENTS!')
+            # print('!NO EVENTS!')
+            # self.tabViewMenu()
+            # self.update()
             return
+        # Refresh events list used in event navigation object
         mv = menuView(self.schedule.events)
         self.navView = Navigation(menu=mv)
         while True:
@@ -313,14 +320,6 @@ class Display(object):
             self.update()
             actionString = self.nav.menuMain.action()
 
-            # try:
-            #     self.navView.menuMain.display()
-            # except IndexError:
-            #     print('Viewing empty events?')
-            # if self.cam.recording:
-            #     self.cam.refresh()
-            # self.update()
-            # print("actionString: {}".format(self.navView.actionString))
             if self.navView.actionString is None:
                 break
             if self.navView.actionString == "L0":
@@ -330,11 +329,12 @@ class Display(object):
         """
         Create a manuView for viewing saved videos in a given path
         """
-        path = self.cam.dstroot
+        pathVideos = self.cam.dstroot
+        pathVideosUSB = self.cam.usbroot
         videos = []
         p = subprocess.Popen("ls", shell=True,
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                             cwd=path)
+                             cwd=pathVideos)
         p_status = p.wait()
         for line in iter(p.stdout.readline, b''):
             print(line),
@@ -359,16 +359,6 @@ class Display(object):
                 break
             if self.navView.actionString == "L0":
                 return "LO exit"
-            #     # If a string event was selected
-            #     # action = self.navTime.menuMain.action()
-            #     print("..action is a string")
-            #     self.navTime.menuMain.up()
-            # elif self.navTime.actionString is None:
-            #     print("..time shorter than 4 digits")
-            #     return self.navTime.menuMain.displayTime()
-            # if len(self.navTime.menuMain.time) > 3:
-            #     print("..the time is ready")
-            #     return self.navTime.menuMain.displayTime()
 
     def viewIP(self):
         ip_addr = show_ip()
@@ -402,7 +392,7 @@ class Display(object):
         self.draw.text((self.padding, self.height / 2 - 3),
                        'Start:', font=self.font, fill=0)
         start = self.chooseTime()
-        print("Start time will be:" + start)
+        loggerVH.debug("Start time will be:" + start)
         # Redraw tab and Length title
         self.draw.polygon([(0, self.top), (tabWidth, self.top),
                            (tabWidth + (tabWidth / 2), self.height / 2),
@@ -420,7 +410,12 @@ class Display(object):
             self.update()
             time.sleep(3)
         elif not length:    # If chooseTime returns false...
-            print("Length entry failed, leaving addEvent")
+            loggerVH.error("Length entry failed, leaving addEvent")
+            # Redraw tab
+            self.draw.text((1, self.height / 2 - 3), 'FAILED',
+                           font=self.font, fill=0)
+            self.update()
+            time.sleep(3)
         else:
             # Call schedule add function
             self.schedule.addEvent(start, length)
@@ -459,7 +454,7 @@ class Display(object):
 
     def clearVideos(self):
         try:
-            # Call schedule clear function
+            # Call video clear function
             self.draw.text((1, self.height / 2), 'Clearing...', font=self.font, fill=1)
             # Delete with unlink
             for root, dirs, files in os.walk(self.cam.dstroot):
@@ -492,7 +487,7 @@ class Display(object):
         self.draw.text((self.padding, self.height / 2 - 3),
                        'mmdd:', font=self.font, fill=0)
         curMMDD = self.chooseTime()
-        print("setting mmdd: "+curMMDD)
+        loggerVH.debug("setting mmdd: "+curMMDD)
         # Draw white tab and current menu choice
         self.draw.polygon([(0, self.top), (tabWidth, self.top),
                            (tabWidth + (tabWidth / 2), self.height / 2),
@@ -502,7 +497,7 @@ class Display(object):
         self.draw.text((self.padding, self.height / 2 - 3),
                        'Time:', font=self.font, fill=0)
         curTime = self.chooseTime()
-        print("setting time: "+curTime)
+        loggerVH.debug("setting time: "+curTime)
         # Draw white tab and current menu choice
         self.draw.polygon([(0, self.top), (tabWidth, self.top),
                            (tabWidth + (tabWidth / 2), self.height / 2),
@@ -512,9 +507,10 @@ class Display(object):
         self.draw.text((self.padding, self.height / 2 - 3),
                        'Year:', font=self.font, fill=0)
         curYear = self.chooseTime()
-        print("setting year: "+curYear)
+        loggerVH.debug("setting year: "+curYear)
         try:
             if int(curTime) > 2400:
+                loggerVH.error("Entered weird time: " + curTime)
                 self.draw.text((1, self.height / 2), 'Weird Time!', font=self.font, fill=1)
             else:
                 # Call schedule add function
@@ -523,9 +519,9 @@ class Display(object):
                 # Call schedule sync function
                 self.schedule.sync()
                 self.draw.text((1, self.height / 2), 'SYNCED', font=self.font, fill=1)
-        except ValueError:
-            print("___Time failed___")
-            raise ValueError("Message")
+                loggerVH.info("Time set to: {} {} {}".format(curMMDD, curTime, curYear))
+        except:
+            loggerVH.error("setTime failed")
         time.sleep(3)
 
     def chooseTime(self):
@@ -539,7 +535,7 @@ class Display(object):
 
             # Return if the time is at 4 digits
             if len(self.navTime.menuMain.time) > 3:
-                print("..the time is ready"+self.navTime.menuMain.time)
+                loggerVH.debug("..the time is ready"+self.navTime.menuMain.time)
                 self.navTime.menuMain.display()
                 self.tabTimeMenu()
                 self.update()
@@ -551,14 +547,14 @@ class Display(object):
                 # If a number action was selected,
                 # go back up to display level
                 # action = self.navTime.menuMain.action()
-                # print("..action is a string")
+                # loggerVH.debug("..action is a string")
                 # time.sleep(1)
                 self.navTime.menuMain.up()
 
             if self.navTime.actionString is None:
-                print("..time shorter than 4 digits")
+                loggerVH.debug("..time shorter than 4 digits")
                 # if self.navTime.menuMain.time == 0:
-                #     print("time ABORTED")
+                #     loggerVH.debug("time ABORTED")
                 #     self.extraInfo = "ABORTED!"
                 #     self.navTime.menuMain.display()
                 #     self.tabTimeMenu()
@@ -568,7 +564,7 @@ class Display(object):
                 return self.navTime.menuMain.displayTime()
 
             elif self.navTime.actionString == -2:
-                print("time shortened")
+                loggerVH.debug("time shortened")
 
     def chooseTimeTest(self):
         mt = menuTime(TimeMenu)
@@ -578,7 +574,7 @@ class Display(object):
             self.navTime.menuMain.display()
             self.tabTimeMenu()
             self.update()
-            # print(action)
+            # loggerVH.debug(action)
             c = getch()
             if c == "x": break
             if c == "n": self.navTime.menuMain.next()  # Simulate NEXT button
@@ -665,7 +661,7 @@ class Display(object):
                            ],
                           outline=0, fill=255)
         # Draw text, split into two lines if too long for screen
-        textCut = 12
+        textCut = 11
         if len(self.navView.menuMain.displayCurrent()) > textCut:
             self.draw.polygon([(x, self.top), (x + tabWidth * tabScale, self.top),
                                (x + tabWidth * tabScale + (tabWidth / 2), self.height / 2),
@@ -780,7 +776,7 @@ class Display(object):
     # Recording will not start
 
     def shutdown(self):
-        print("*** Shutting down ***")
+        loggerVH.warning("*** Shutting down ***")
         self.cam.camera.close()
         os.system("sudo gpio mode 7 out")
         # 'gpio mode 7 out' for wittypi intead of 'sudo shutdown -h now'
@@ -801,10 +797,11 @@ class Display(object):
         return False
 
     def eventsBar(self):
+        # Draw events bar at the bottom of the screen and decay line on the right
         j = 1440  # 1440 minutes in a day
-        # Clear bar buffer by drawing a black filled box.
+        # Clear area by drawing a black filled box.
         self.draw.rectangle((0, 27, self.width, self.height), outline=0, fill=0)
-
+        # Draw minor ticks for every hour, major every 3 hours, and tallest for noon
         while j > 0:
             x = (self.width * (float(j) / float(1440)))
             if j % 720 == 0:
@@ -814,29 +811,25 @@ class Display(object):
             elif j % 60 == 0:
                 self.draw.line(((x, 31), (x, self.height)), fill=1)
             j -= 60
-        # self.draw.line(((self.width/2,26) , (self.width/2,self.height)), fill=1)
+        # For each scheduled event
         for ev in self.schedule.events:
             start = code1440(ev['start'])
             length = code1440(ev['length'])
             end = start + length
-
             s = (self.width * (float(start) / float(1440)))
             e = (self.width * (float(end) / float(1440)))
             m = e - (e - s / 2)
-            # self.draw.line(((self.width/2,26) , (self.width/2,self.height)), fill=1)
-
-            # print("%r,%r, %r ~ %r, %r"%(start,length,end, s,e))
+            # loggerVH.debug("%r,%r, %r ~ %r, %r"%(start,length,end, s,e))
             padding = 2
             shape_w = 2
             bottom = self.height
             top = 26
+            # Draw a trapezoid (shorter on bottom) for each event
             self.draw.polygon([(s, bottom), (s - shape_w / 2, top),
                                (e + shape_w / 2, top), (e, bottom)],
                               outline=255, fill=1)
-
         # Draw decay bar on right side
         heightMult = (self.decay-code1440(nowti()))/self.decayLength
-
         self.draw.line(((self.width-1, self.height),
                     (self.width-1, 0)), fill=1)
         self.draw.line(((self.width-1, self.height),
@@ -926,7 +919,7 @@ class Navigation(object):
             # If the assigned menu is listed...
             self.menuMain = k_parems['menu']
         else:
-            print('..Using default ViewHiveMenu..')
+            loggerVH.debug('..Using default ViewHiveMenu..')
             menuDef = menu(ViewHiveMenu)
             self.menuMain = menuDef
         self.actionString = ""
@@ -941,12 +934,12 @@ class Navigation(object):
 
         def callbackR(way):
             self.dec.place += way
-            # print("pos={}".format(self.dec.place))
+            # loggerVH.debug("pos={}".format(self.dec.place))
             if way > 0: self.menuMain.next()
             if way < 0: self.menuMain.back()
 
         def callbackS(val):
-            # print("state={}".format(self.dec.state))
+            # loggerVH.debug("state={}".format(self.dec.state))
             if val:     # pressed
                 self.dec.bounce = 10
                 s = self.menuMain.select()
@@ -958,6 +951,7 @@ class Navigation(object):
 
         knobpi = pigpio.pi()    # Create pigpio object for
         self.dec = decoder(knobpi, rotaryPinA, rotaryPinB, rotaryPinPush, callbackR, callbackS)
+
 
     def testRun(self):
         while self.menuMain.action() != "shutdown":
@@ -993,9 +987,9 @@ class Recorder(object):
         if getattr(self.__class__, '_has_instance', False):
             raise RuntimeError('Cannot create another instance')
         self.__class__._has_instance = True
-        print('.. Recorder init.. ', end='')
+        loggerVH.debug('.. Recorder init.. ')
         self.camera = picamera.PiCamera()
-        print('.. ', end='')
+        loggerVH.debug('.. ')
         # self.camera.rotation = 180
         # self.camera.resolution = (1920, 1080)
         # self.camera.framerate = 30
@@ -1004,7 +998,7 @@ class Recorder(object):
         # self.camera.framerate = 49
         self.camera.annotate_background = picamera.Color('grey')
         self.camera.annotate_foreground = picamera.Color('purple')
-        print('.')
+        loggerVH.debug('.')
         self.timestamp = now()
         self.startTime = 0
         self.timeElapsed = 0
@@ -1024,7 +1018,7 @@ class Recorder(object):
         self.srcroot = ''
         self.convCommand = ''
         #####
-        print('*** Recorder born %s***\n' % self.timestamp)
+        loggerVH.debug('*** Recorder born %s***\n' % self.timestamp)
         os.system("sudo gpio -g mode 5 out")
         os.system("sudo gpio -g mode 6 out")
         os.system("sudo gpio -g write 5 0")
@@ -1041,8 +1035,9 @@ class Recorder(object):
         self.srcroot = '/home/pi/Videos/%s' % self.srcfile
         self.convCommand = 'MP4Box -add {0}.h264 {1}.mp4'.format(self.timestamp, self.timestamp)
 
-        print("*** Recording started at %s ..." % self.timestamp)
         self.camera.start_recording(self.srcroot, format='h264')
+        loggerVH.debug("*** Recording started at %s ***" % self.timestamp)
+        loggerVH.info('Video recording started')
         self.recording = True
         # self.camera.led = True
         os.system("gpio -g write 5 1")
@@ -1054,7 +1049,7 @@ class Recorder(object):
         results = pool.map(self.refresh, my_array)
 
     def refresh(self):
-        # print('annotating!')
+        # loggerVH.debug('annotating!')
         self.timeElapsed = time.time() - self.startTime
         self.camera.annotate_text = "%s | %.3f" % (nowdts(), self.timeElapsed)
         os.system("gpio -g write 5 1")
@@ -1067,13 +1062,12 @@ class Recorder(object):
         self.camera.wait_recording(1)
         self.camera.stop_recording()
         self.recording = False
-
+        loggerVH.info('Video recording stopped')
+        loggerVH.info('Saved as: %s' % self.srcroot)
         # self.camera.stop_preview()
         self.timeElapsed = 0
         self.camera.led = False
-
-        print("Recording stopped at %s ..." % now())
-        self.copy()
+        loggerVH.debug("*** Recording stopped at %s ***" % now())
 
     def copy(self):  # TODO Prevent video storage bloat
         src = self.dstroot
@@ -1083,23 +1077,28 @@ class Recorder(object):
             # progressUpdate(bytescopied)
             pass
         try:
-            if not os.path.exists(dst):  # If there's no media/pi/VIEWHIVE directory
-                if os.path.exists('/dev/disk/by-label/VIEWHIVE'):
-                    os.makedirs(dst)
+            if not os.path.exists(dst):  # If there's no media/pi/VIEWHIVE directory (unmounted)
+                if os.path.exists('/dev/disk/by-label/VIEWHIVE'):   # If a USB drive is seen
+                    loggerVH.info('USB named VIEWHIVE detected')
+                    os.makedirs(dst)    # Create destination folder
                 else:
                     print("No VIEWHIVE USB detected!")
-            # Mount usb stick with VIEWHIVE name no matter what
-            os.system("sudo mount -t vfat /dev/disk/by-label/VIEWHIVE " + self.usbroot)
-        except:
+                    loggerVH.info('USB named VIEWHIVE not detected')
+            # Try to mount usb stick with VIEWHIVE name no matter what
+            os.system("sudo mount -t vfat /dev/disk/by-label/VIEWHIVE " + dst)
+            loggerVH.info('VIEWHIVE disk mounted at %s', dst)
+        except Exception as inst:
             print("FAILED sudo mount -t vfat /dev/disk/by-label/VIEWHIVE")
+            loggerVH.error('COPY error: %s', inst)
+            loggerVH.error('VIEWHIVE disk failed to mount at %s', dst)
         # Print contents of dstroot
-        print("dstroot %s contains:" % self.dstroot)
+        loggerVH.debug("dstroot %s contains:" % self.dstroot)
         p = subprocess.Popen("ls", shell=True,
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              cwd=self.dstroot)
         # p_status = p.wait()
         for line in iter(p.stdout.readline, b''):
-            print(line),
+            loggerVH.debug(line),
         # Copy all files from dstroot to USB
         try:
             # shutil.copy(self.srcroot, self.dstroot)
@@ -1116,19 +1115,24 @@ class Recorder(object):
                         with open(d, 'wb') as fdst:
                             self.copyfileobj(fsrc, fdst, progress)
                     # os.unlink(s)  # Delete as you copy
-            print("usbroot %s contains:" % self.usbroot)
+            loggerVH.debug("usbroot %s contains:" % self.usbroot)
             p = subprocess.Popen("ls", shell=True,
                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                  cwd=self.usbroot)
             for line in iter(p.stdout.readline, b''):
-                print(line),
-            # Finally, unmount USB
-            os.system("sudo umount " + self.usbroot)
-            print("..Copied to USB!")
+                loggerVH.debug(line),
+            # Copy log file to USB
+
+            # Finally, clear usbroot and unmount
+            os.system("sudo rm -rf " + dst)
+            os.system("sudo umount " + dst)
+            loggerVH.debug("..Copied to USB!")
+            loggerVH.info('Videos copied to USB, drive unmounted')
             return True
         except Exception as inst:
             # Copy failed, print error and return False
             print("COPY error: %s" % inst)
+            loggerVH.error("COPY error: %s" % inst)
             return False
 
     def copyfileobj(self, fsrc, fdst, callback, length=16 * 1024):
@@ -1162,3 +1166,11 @@ class Recorder(object):
         #        else:
         #            print ("**! Conversion FAILED !**")
         #        silentremove("{0}{1}.h264".format(self.dstroot,self.timestamp))
+
+
+if __name__ == '__main__':
+    display = Display(cam=True)
+    # print(display.nav.menuMain.struct)
+    # self.assertTrue(display.nav.menuMain.struct[5][2], "Config")
+    display.calibrate()
+    display.runNavigation()

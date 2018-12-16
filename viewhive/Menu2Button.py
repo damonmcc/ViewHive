@@ -4,12 +4,7 @@
 #
 import pigpio
 import logging
-LOG_FORMAT = "%(Levelname)s %(asctime)s - %(message)s"
-logging.basicConfig(filename="/home/pi/pywork/ViewHive/vh.log",
-                    level=logging.DEBUG,
-                    format=LOG_FORMAT)
-logger = logging.getLogger()
-import time
+import logging.handlers
 from viewhive.rotary_encoder import *
 
 ViewHiveMenu = [
@@ -55,7 +50,7 @@ ViewHiveMenu = [
     [600, "IP", 630],
     [600, "Cam", 640],
     #   Time
-    [610, "Show", "exec_time_show"],
+    # [610, "Show", "exec_time_show"],
     [610, "Set", 611],
     [611, "Confirm Time Sst?", 612],
     [612, "Setting!", "exec_time_set"],
@@ -160,8 +155,8 @@ class menu:
         if pos is None: pos = self.key
         self.key = pos
         parent = self._menu[pos][1]
-        print(str(self.level) + ":" + self._menu[parent][2])
-        print(self._menu[pos][2])
+        # print(str(self.level) + ":" + self._menu[parent][2])
+        # print(self._menu[pos][2])
 
     def displayCurrent(self, pos=None):
         """
@@ -216,10 +211,10 @@ class menu:
         """
         if pos is None: pos = self.key
         self.key = pos
-        print("SelectPos is " + str(pos))
+        # print("SelectPos is " + str(pos))
         if isinstance(self._menu[pos][3], str): return True
         if self._menu[pos][3] > 0:
-            print("key was" + str(self._menu[pos][0])+", is "+str(self.struct[self._menu[pos][0]][0]))
+            # print("key was " + str(self._menu[pos][0])+", is "+str(self.struct[self._menu[pos][0]][0]))
             self.key = self.struct[self._menu[pos][0]][0]
             self.level += 1
             return False
@@ -437,7 +432,7 @@ class menuView:
         if 'files' in k_parems:
             # If viewing video files...
             for cur in structure:
-                print("menuView file " + str(i) + ": " + str(cur))
+                # print("menuView file " + str(i) + ": " + str(cur))
                 self._menu.append([i, r[0], str(cur), -1])
                 # if isinstance(item[2], int): r[item[2]] = i
                 # self._menu.append([i, r[item[0]], item[1], item[2]])
@@ -459,7 +454,7 @@ class menuView:
         # Build internal dictionary representing menu structure
         self.struct = {}
         for item in self._menu:
-            print("_menu: " + str(item))
+            # print("_menu: " + str(item))
             if item[0] != 0:
                 if item[1] not in self.struct: self.struct[item[1]] = []
                 self.struct[item[1]].append(item[0])

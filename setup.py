@@ -10,7 +10,7 @@ config = {
     'download_url': 'https://github.com/damonmcc/ViewHive.git',
     'author_email': 'damonmcc1391@gmail.com',
     'version': '0.7',
-    'install_requires': ['nose', 'pigpio', 'PIL', 'picamera'],
+    'install_requires': ['nose', 'pigpio', 'picamera'],
     'packages': ['viewhive'],
     'scripts': ['bin/ir_test'],
     'name': 'ViewHive'

@@ -1,3 +1,5 @@
+import time
+import pigpio
 
 
 class decoder:
@@ -13,7 +15,6 @@ class decoder:
       counterclockwise.
       """
 
-        import pigpio
         self.pi = pi
         self.gpioA = gpioA
         self.gpioB = gpioB
@@ -40,10 +41,10 @@ class decoder:
         # Debounce switch pin, time in microseconds
         self.pi.set_glitch_filter(gpioC, 2000)
 
-        # Rotation callback will be callbackR (_push)
+        # Rotation callback will be callbackR (_pulse)
         self.cbA = self.pi.callback(gpioA, pigpio.EITHER_EDGE, self._pulse)
         self.cbB = self.pi.callback(gpioB, pigpio.EITHER_EDGE, self._pulse)
-        # Switch callback will be callbackS (_pulse)
+        # Switch callback will be callbackS (_push)
         self.cbC = self.pi.callback(gpioC, pigpio.FALLING_EDGE, self._push)
 
     def _pulse(self, gpio, level, tick):
@@ -83,12 +84,10 @@ class decoder:
         Decode the rotary encoder button press.
         """
         if state == 0:  # pressed
-            print("Pressed!")
-            print("{:2d}->{} at {}".format(gpio, state, tick))
+            # print("Pressed!")
             self.callbackS(1)
-            # self.state ==
         else:
-            print("NoT Pressed?!!")
+            # print("NoT Pressed?!!")
             self.callbackS(0)
 
     def cancel(self):
@@ -102,8 +101,6 @@ class decoder:
 
 
 if __name__ == "__main__":
-    import time
-    import pigpio
 
     pos = 0
     state = 0
