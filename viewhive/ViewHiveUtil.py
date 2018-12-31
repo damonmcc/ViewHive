@@ -8,14 +8,14 @@ from PIL import ImageFont
 import shutil
 from multiprocessing.dummy import Pool as ThreadPool
 from subprocess import check_call as run
-SRC_DIR = "/home/pi/pywork/ViewHive/.src" # checkout directory
+SRC_DIR = "/home/pi/pywork/ViewHive/" # checkout directory
 UPDATE_CMD = ( # base command
 'pip install --upgrade -e ' 
 'git://github.com/damonmcc/ViewHive.git@master#egg=ViewHive'
 )
 from viewhive.WittyPi import *
 loggerVH = logging.getLogger('vhutil')
-VH_VERSION = "0.9.6"
+VH_VERSION = "0.9.7"
 # FONT_PATH = os.environ.get("FONT_PATH", "/viewhive/GameCube.ttf")
 
 
@@ -803,6 +803,7 @@ class Display(object):
                           outline=0, fill=255)
         self.draw.text((x + self.padding, self.height / 2 - self.textHpad),
                        "UPDATING...", font=self.fontDefault, fill=0)
+        self.update()
         loggerVH.info("Updating with: ")
         loggerVH.info(UPDATE_CMD)
         # run('sudo %s' % UPDATE_CMD)
@@ -817,11 +818,14 @@ class Display(object):
                            ],
                           outline=0, fill=255)
         self.draw.text((x + self.padding, self.height / 2 - self.textHpad),
-                       "RESTARTING...", font=self.fontDefault, fill=0)
+                       "RESTARTING ME!", font=self.fontDefault, fill=0)
+        self.update()
         time.sleep(2)
-        os.execv(sys.executable, sys.argv + ['--updated'])
-        # os.fsync()  # flushing data buffered on open files
-        # os.execl('restartVH.sh', '')
+        # os.execv(sys.executable, sys.argv + ['--updated'])
+        sys.stdout.flush()  # flushing data buffered on open files
+        # os.chdir(SRC_DIR)
+        restartSRC = 'restartVH.sh'
+        os.execl(restartSRC, '')
 
 
     def liveNow(self):
