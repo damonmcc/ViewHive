@@ -44,11 +44,12 @@ ViewHiveMenu = [
     [510, "Recording..", "exec_rec_now"],
     [511, "Saving..", "exec_stop_now"],
 
-    # Config menus TODO Review options
+    # Config menus
     [600, "Time", 610],
     [600, "WIFI", 620],
     [600, "IP", 630],
     [600, "Cam", 640],
+    [600, "Update", 650],
     #   Time
     # [610, "Show", "exec_time_show"],
     [610, "Set", 611],
@@ -67,6 +68,9 @@ ViewHiveMenu = [
     [630, "IP :", "exec_ip_show"],
     # Cam
     [640, "Preview", "exec_cam_prev"],
+    # Update
+    [650, "Get Update?", 651],
+    [651, "Get Update?", "exec_updateVH"],
 
     # Shutdown menus
     [100, "SHUTDOWN?", 110],
@@ -144,7 +148,7 @@ class menu:
         #     print(self.struct[key])
         # Start at config
         # print(self._menu)
-        self.key = 7
+        self.key = 1
 
     def display(self, pos=None):
         """

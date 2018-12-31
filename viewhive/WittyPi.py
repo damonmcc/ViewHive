@@ -266,10 +266,9 @@ class Schedule(object):
         # converts the event list to wpi format and stores in self.content
         self.content = ''
         time = now()
-        header = '''# HiveView generated schedule v%r , %r
-# Perhaps turn on 30 minutes before sunrise and sunset everyday
+        header = '''# HiveView schedule v%r, generated %r
+# List of events (start times from 0000-2400):
 #	%r
-#
 # Recording length in comments''' % (self.version, time, self.events)
         wpiCommands = [""]
         i = 0
@@ -592,6 +591,8 @@ class Schedule(object):
         # write BEGIN and END
         # write events in wpi format
         self.EventsToWpi()
+        loggerWP.info("Schedule content to be written to {}:".format(self.source))
+        loggerWP.info('\n'+self.content)
         self.file = open(self.source, 'w')
         self.file.write(self.content)
         loggerWP.debug("Schedule source written ...")

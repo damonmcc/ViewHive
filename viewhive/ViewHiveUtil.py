@@ -1,3 +1,4 @@
+import sys
 import picamera
 import Adafruit_GPIO.SPI as SPI
 import Adafruit_SSD1306
@@ -6,6 +7,12 @@ from PIL import ImageDraw
 from PIL import ImageFont
 import shutil
 from multiprocessing.dummy import Pool as ThreadPool
+from subprocess import check_call as run
+SRC_DIR = "/home/pi/pywork/ViewHive/.src" # checkout directory
+UPDATE_CMD = ( # base command
+'pip install --upgrade -e ' 
+'git://github.com/damonmcc/ViewHive.git@master#egg=ViewHive'
+)
 from viewhive.WittyPi import *
 loggerVH = logging.getLogger('vhutil')
 VH_VERSION = "0.9.6"
@@ -149,7 +156,7 @@ class Display(object):
 
     def runNavigation(self):
         """Main camera navigation logic. """
-        loggerVH.info('display.runNavigation initiated')
+        loggerVH.info('runNavigation (camera menu) started')
         while True:
             # os.system("clear")
             # self.nav.menuMain.display()
@@ -229,6 +236,7 @@ class Display(object):
                 self.decay = code1440(nowti()) + self.decayLength
                 if not self.viewVideos():
                     self.nav.menuMain.up()
+                self.decay = code1440(nowti()) + self.decayLength
             elif actionString == 'exec_del_storage':
                 self.clearVideos()
                 self.decay = code1440(nowti()) + self.decayLength
@@ -237,6 +245,8 @@ class Display(object):
                 self.cam.previewToggle()
                 self.nav.menuMain.up()
                 self.decay = code1440(nowti()) + self.decayLength
+            elif actionString == 'exec_updateVH':
+                self.updateVH()
             elif actionString == 'exec_wifi_show':
                 print(show_wifi())
             elif actionString == 'exec_ip_show':
@@ -327,7 +337,7 @@ class Display(object):
 
     def viewVideos(self):
         """
-        Create a manuView for viewing saved videos in a given path
+        Create a menuView for viewing saved videos in a given path
         """
         pathVideos = self.cam.dstroot
         pathVideosUSB = self.cam.usbroot
@@ -462,13 +472,8 @@ class Display(object):
                     os.unlink(os.path.join(root, f))
                 for d in dirs:
                     shutil.rmtree(os.path.join(root, d))
-            # Clear pseudo-mounted USB directory
-            for root, dirs, files in os.walk(self.cam.usbroot):
-                for f in files:
-                    os.unlink(os.path.join(root, f))
-                for d in dirs:
-                    shutil.rmtree(os.path.join(root, d))
             # time.sleep(3)
+            loggerVH.info("Deleting videos from %s" % self.cam.dstroot)
         except Exception as inst:
             raise
 
@@ -781,6 +786,44 @@ class Display(object):
         os.system("sudo gpio mode 7 out")
         # 'gpio mode 7 out' for wittypi intead of 'sudo shutdown -h now'
 
+    def updateVH(self):
+        sudo = True
+        src_dir = SRC_DIR
+        release = 'master'
+        commit = None
+        """Redraw the info tab with update text """
+        tabWidth = 30
+        x = self.padding + tabWidth
+        # Draw a small black filled box to clear the image.
+        self.draw.rectangle((x, self.top, self.width, self.bottom), outline=0, fill=0)
+        self.draw.polygon([(x, self.top), (x + tabWidth * 2, self.top),
+                           (x + tabWidth * 2 + (tabWidth / 2) + 10, self.height / 2),
+                           (x + tabWidth * 2, self.bottom), (x, self.bottom)
+                           ],
+                          outline=0, fill=255)
+        self.draw.text((x + self.padding, self.height / 2 - self.textHpad),
+                       "UPDATING...", font=self.fontDefault, fill=0)
+        loggerVH.info("Updating with: ")
+        loggerVH.info(UPDATE_CMD)
+        # run('sudo %s' % UPDATE_CMD)
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-U',
+                               'git+https://github.com/damonmcc/ViewHive#egg=ViewHive'])
+        loggerVH.info("Update complete, restarting program")
+        # Draw a small black filled box to clear the image.
+        self.draw.rectangle((x, self.top, self.width, self.bottom), outline=0, fill=0)
+        self.draw.polygon([(x, self.top), (x + tabWidth * 2, self.top),
+                           (x + tabWidth * 2 + (tabWidth / 2) + 10, self.height / 2),
+                           (x + tabWidth * 2, self.bottom), (x, self.bottom)
+                           ],
+                          outline=0, fill=255)
+        self.draw.text((x + self.padding, self.height / 2 - self.textHpad),
+                       "RESTARTING...", font=self.fontDefault, fill=0)
+        time.sleep(2)
+        os.execv(sys.executable, sys.argv + ['--updated'])
+        # os.fsync()  # flushing data buffered on open files
+        # os.execl('restartVH.sh', '')
+
+
     def liveNow(self):
         # Function to check if an event is scheduled for right now
         for ev in self.schedule.events:
@@ -1013,7 +1056,6 @@ class Recorder(object):
         self.usbname = 'VIEWHIVE'
         self.usbroot = '/media/pi/' + self.usbname + '/'
         self.dstroot = '/home/pi/Videos'
-        self.coderoot = '/home/pi/ViewHive/viewhive/ViewHive'
         self.srcfile = ''
         self.srcroot = ''
         self.convCommand = ''
@@ -1036,8 +1078,7 @@ class Recorder(object):
         self.convCommand = 'MP4Box -add {0}.h264 {1}.mp4'.format(self.timestamp, self.timestamp)
 
         self.camera.start_recording(self.srcroot, format='h264')
-        loggerVH.debug("*** Recording started at %s ***" % self.timestamp)
-        loggerVH.info('Video recording started')
+        loggerVH.info("*** Recording started at %s ***" % self.timestamp)
         self.recording = True
         # self.camera.led = True
         os.system("gpio -g write 5 1")
@@ -1067,7 +1108,7 @@ class Recorder(object):
         # self.camera.stop_preview()
         self.timeElapsed = 0
         self.camera.led = False
-        loggerVH.debug("*** Recording stopped at %s ***" % now())
+        loggerVH.info("*** Recording stopped at %s ***" % now())
 
     def copy(self):  # TODO Prevent video storage bloat
         src = self.dstroot
@@ -1111,6 +1152,7 @@ class Recorder(object):
                 d = os.path.join(dst, item)
                 if not os.path.exists(d) or os.stat(s).st_mtime - os.stat(d).st_mtime > 1:
                     # shutil.copy2(s, d)
+                    loggerVH.info('Copying %s...', s)
                     with open(s, 'rb') as fsrc:
                         with open(d, 'wb') as fdst:
                             self.copyfileobj(fsrc, fdst, progress)
@@ -1124,8 +1166,8 @@ class Recorder(object):
             # Copy log file to USB
 
             # Finally, clear usbroot and unmount
-            os.system("sudo rm -rf " + dst)
             os.system("sudo umount " + dst)
+            os.system("sudo rm -rf " + dst)
             loggerVH.debug("..Copied to USB!")
             loggerVH.info('Videos copied to USB, drive unmounted')
             return True
