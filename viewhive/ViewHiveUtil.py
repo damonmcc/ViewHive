@@ -15,7 +15,7 @@ UPDATE_CMD = ( # base command
 )
 from viewhive.WittyPi import *
 loggerVH = logging.getLogger('vhutil')
-VH_VERSION = "0.9.7"
+VH_VERSION = "0.9.7.2"
 # FONT_PATH = os.environ.get("FONT_PATH", "/viewhive/GameCube.ttf")
 
 
@@ -27,7 +27,6 @@ class Display(object):
     def __init__(self, **k_parems):
         loggerVH.info('Display instance starting, at %s with parems:' % now(), k_parems)
         loggerVH.debug("Display initiated")
-        #TODO Replace prints with logging
         time.sleep(1)
         RST = 24
         DC = 23
@@ -61,12 +60,11 @@ class Display(object):
         # Get drawing object to draw on image.
         self.draw = ImageDraw.Draw(self.image)
 
-        # loggerVH.debug("Current Working Directory: {}".format(os.getcwd()))
-        #TODO Review font choices
+        loggerVH.debug("Current Working Directory: {}".format(os.getcwd()))
         self.fontDefault = ImageFont.load_default()
         # self.font = ImageFont.load("GameCube.ttf")
         self.font = ImageFont.truetype("viewhive/GameCube.ttf", 6)
-        self.fontSmall = ImageFont.truetype("viewhive/GameCube.ttf", 7)
+        self.fontBig = ImageFont.truetype("viewhive/GameCube.ttf", 7)
         self.extraInfo = ''
 
         loggerVH.debug('..schedule..')
@@ -115,6 +113,7 @@ class Display(object):
         else:
             self.recorder = []
             loggerVH.warning('...blank cam created..')
+        self.calibrate()
 
     def update(self):
         """Refresh display."""
@@ -126,7 +125,6 @@ class Display(object):
         and font loading."""
         # Draw a black filled box to clear the image.
         self.draw.rectangle((0, 0, self.width, self.height), outline=0, fill=0)
-
         # Move left to right keeping track of the current x position for drawing shapes.
         x = self.padding
         # Draw an ellipse.
@@ -145,14 +143,14 @@ class Display(object):
         x += self.shape_width + self.padding
 
         # Write two lines of text.
-        self.draw.text((x, self.top - 2), 'Hey', font=self.font, fill=255)
-        self.draw.text((x, self.top + 8), 'you', font=self.font, fill=255)
-        self.draw.text((x - 8, self.top + 15), 'V: ' + str(VH_VERSION),
+        self.draw.text((x, self.top - 2), '    ', font=self.font, fill=255)
+        self.draw.text((x, self.top + 8), '    ', font=self.font, fill=255)
+        self.draw.text((x - 15, self.top + 15), 'V: ' + str(VH_VERSION),
                        font=self.font, fill=255)
         if self.mode == 'ERR':
             self.draw.text((1, 1), 'CAM ERROR', font=self.font, fill=255)
         self.update()
-        time.sleep(3)
+        time.sleep(5)
 
     def runNavigation(self):
         """Main camera navigation logic. """
@@ -702,7 +700,7 @@ class Display(object):
         # Draw a small black filled box to clear the image.
         self.draw.rectangle((0, 0, self.width, self.top), outline=0, fill=0)
         self.draw.text((x, 0),
-                       nowdtsShort(), font=self.fontSmall, fill=255)
+                       nowdtsShort(), font=self.fontBig, fill=255)
         # self.draw.polygon((self.width, d, self.width, self.height-d, self.width - d, self.height-d,
         #                    self.width - d/2, self.height/2, self.width - d, d), fill=255)
 
@@ -802,7 +800,7 @@ class Display(object):
                            ],
                           outline=0, fill=255)
         self.draw.text((x + self.padding, self.height / 2 - self.textHpad),
-                       "UPDATING...", font=self.fontDefault, fill=0)
+                       "UPDATING...", font=self.fontBig, fill=0)
         self.update()
         loggerVH.info("Updating with: ")
         loggerVH.info(UPDATE_CMD)
@@ -818,13 +816,13 @@ class Display(object):
                            ],
                           outline=0, fill=255)
         self.draw.text((x + self.padding, self.height / 2 - self.textHpad),
-                       "RESTARTING ME!", font=self.fontDefault, fill=0)
+                       "RESTART ME!!", font=self.fontBig, fill=0)
         self.update()
         time.sleep(2)
         # os.execv(sys.executable, sys.argv + ['--updated'])
         sys.stdout.flush()  # flushing data buffered on open files
         # os.chdir(SRC_DIR)
-        restartSRC = 'restartVH.sh'
+        restartSRC = '/docs/RPi-scripts/restartVH.sh'
         os.execl(restartSRC, '')
 
 
@@ -1114,7 +1112,7 @@ class Recorder(object):
         self.camera.led = False
         loggerVH.info("*** Recording stopped at %s ***" % now())
 
-    def copy(self):  # TODO Prevent video storage bloat
+    def copy(self):
         src = self.dstroot
         dst = self.usbroot
 
@@ -1141,9 +1139,9 @@ class Recorder(object):
         p = subprocess.Popen("ls", shell=True,
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              cwd=self.dstroot)
-        # p_status = p.wait()
         for line in iter(p.stdout.readline, b''):
             loggerVH.debug(line),
+
         # Copy all files from dstroot to USB
         try:
             # shutil.copy(self.srcroot, self.dstroot)
@@ -1161,19 +1159,21 @@ class Recorder(object):
                         with open(d, 'wb') as fdst:
                             self.copyfileobj(fsrc, fdst, progress)
                     # os.unlink(s)  # Delete as you copy
-            loggerVH.debug("usbroot %s contains:" % self.usbroot)
+            # Copy log file to USB stick
+            loggerVH.info('Videos copied to USB, coping log file')
+            os.system('sudo cp /home/pi/pywork/ViewHive/ViewHive.log '+
+                      dst+'ViewHive_'+now()+'.log')
+            loggerVH.debug('usbroot %s contains:' % self.usbroot)
             p = subprocess.Popen("ls", shell=True,
                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                  cwd=self.usbroot)
             for line in iter(p.stdout.readline, b''):
                 loggerVH.debug(line),
-            # Copy log file to USB
-
-            # Finally, clear usbroot and unmount
+            loggerVH.debug("..Copied to USB!")
+            # Finally, unmount and clear usbroot
             os.system("sudo umount " + dst)
             os.system("sudo rm -rf " + dst)
-            loggerVH.debug("..Copied to USB!")
-            loggerVH.info('Videos copied to USB, drive unmounted')
+            loggerVH.info('USB drive unmounted and ran:\nsudo rm -rf /media/pi/VIEWHIVE')
             return True
         except Exception as inst:
             # Copy failed, print error and return False

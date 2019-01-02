@@ -118,7 +118,6 @@ class ViewHiveTests(unittest.TestCase):
         displayFull = Display(cam=True)
         # print(display.nav.menuMain.struct)
         # self.assertTrue(display.nav.menuMain.struct[5][2], "Config")
-        displayFull.calibrate()
         displayFull.runNavigation()
 
 

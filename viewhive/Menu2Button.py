@@ -18,7 +18,7 @@ ViewHiveMenu = [
     [1, "shutdown", 100],
 
     # View menus
-    [200, "Day", "exec_day_view"], # TODO Say no schedule if empty
+    [200, "Day", "exec_day_view"],
 
     # Event Add menus
     [300, "Confirm add?", 301],
@@ -148,7 +148,7 @@ class menu:
         #     print(self.struct[key])
         # Start at config
         # print(self._menu)
-        self.key = 1
+        self.key = 7
 
     def display(self, pos=None):
         """
