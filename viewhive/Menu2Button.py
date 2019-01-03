@@ -2,11 +2,7 @@
 #
 # ViewHive menu systems: menu, menuTime, menuView
 #
-import pigpio
-import logging
-import logging.handlers
 from viewhive.rotary_encoder import *
-
 ViewHiveMenu = [
     [0, "Welcome", 1],
     [1, "View", 200],
@@ -70,7 +66,9 @@ ViewHiveMenu = [
     [640, "Preview", "exec_cam_prev"],
     # Update
     [650, "Get Update?", 651],
-    [651, "Get Update?", "exec_updateVH"],
+    [650, "Current V?", 652],
+    [651, "Get Update!", "exec_updateVH"],
+    [652, "Current V", "exec_showVersion"],
 
     # Shutdown menus
     [100, "SHUTDOWN?", 110],
@@ -78,6 +76,7 @@ ViewHiveMenu = [
     [110, "shutdown", "shutdown"],
     [120, "soft stop", "softstop"]
 ]
+
 
 TimeMenu = [
     [0, "null", 1],

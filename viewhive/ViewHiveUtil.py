@@ -8,14 +8,15 @@ from PIL import ImageFont
 import shutil
 from multiprocessing.dummy import Pool as ThreadPool
 from subprocess import check_call as run
-SRC_DIR = "/home/pi/pywork/ViewHive/" # checkout directory
+SRC_DIR = "$HOME/.src" # checkout directory
+TGT_DIR = "/home/pi/pywork/ViewHive/" # update target
 UPDATE_CMD = ( # base command
-'pip install --upgrade -e ' 
+'pip install --src="%s" --target %s --upgrade -e ' 
 'git://github.com/damonmcc/ViewHive.git@master#egg=ViewHive'
-)
+) % (SRC_DIR, TGT_DIR)
 from viewhive.WittyPi import *
 loggerVH = logging.getLogger('vhutil')
-VH_VERSION = "0.9.7.2"
+VH_VERSION = "0.9.7.3"
 # FONT_PATH = os.environ.get("FONT_PATH", "/viewhive/GameCube.ttf")
 
 
@@ -245,6 +246,13 @@ class Display(object):
                 self.decay = code1440(nowti()) + self.decayLength
             elif actionString == 'exec_updateVH':
                 self.updateVH()
+            elif actionString == 'exec_showVersion':
+                self.viewVersion()
+                print('Version: ' + VH_VERSION)
+                self.update()
+                time.sleep(3)
+                self.decay = code1440(nowti()) + self.decayLength
+                self.nav.menuMain.up()
             elif actionString == 'exec_wifi_show':
                 print(show_wifi())
             elif actionString == 'exec_ip_show':
@@ -367,7 +375,6 @@ class Display(object):
                 break
             if self.navView.actionString == "L0":
                 return "LO exit"
-
     def viewIP(self):
         ip_addr = show_ip()
         """Redraw the info tab with the time """
@@ -382,6 +389,22 @@ class Display(object):
                           outline=0, fill=255)
         self.draw.text((x + self.padding, self.height / 2 - self.textHpad),
                        ip_addr, font=self.fontDefault, fill=0)
+        # self.draw.text((self.padding, self.height / 2 - self.textHpad),
+        #                self.navTime.menuMain.displayCurrent(), font=self.font, fill=0)
+    def viewVersion(self):
+        ip_addr = show_ip()
+        """Redraw the info tab with the time """
+        tabWidth = 30
+        x = self.padding + tabWidth
+        # Draw a small black filled box to clear the image.
+        self.draw.rectangle((x, self.top, self.width, self.bottom), outline=0, fill=0)
+        self.draw.polygon([(x, self.top), (x + tabWidth*2, self.top),
+                           (x + tabWidth*2 + (tabWidth / 2)+10, self.height / 2),
+                           (x + tabWidth*2, self.bottom), (x, self.bottom)
+                           ],
+                          outline=0, fill=255)
+        self.draw.text((x + self.padding, self.height / 2 - self.textHpad),
+                       VH_VERSION, font=self.fontDefault, fill=0)
         # self.draw.text((self.padding, self.height / 2 - self.textHpad),
         #                self.navTime.menuMain.displayCurrent(), font=self.font, fill=0)
 
@@ -823,7 +846,8 @@ class Display(object):
         sys.stdout.flush()  # flushing data buffered on open files
         # os.chdir(SRC_DIR)
         restartSRC = '/docs/RPi-scripts/restartVH.sh'
-        os.execl(restartSRC, '')
+
+        subprocess.call("./docs/restartVH.sh")
 
 
     def liveNow(self):
