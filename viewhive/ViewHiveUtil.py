@@ -826,12 +826,18 @@ class Display(object):
                        "UPDATING...", font=self.fontBig, fill=0)
         self.update()
         loggerVH.info("Clearing changes with: git reset --hard origin/master")
-        loggerVH.info(subprocess.check_call('git reset --hard origin/master',
-                              shell=True, cwd=TGT_DIR))
+        p = subprocess.check_call('git reset --hard origin/master',
+                                  shell=True, cwd=TGT_DIR,
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        for line in iter(p.stdout.readline, b''):
+            loggerVH.info(line),
         loggerVH.info("Updating with: git pull")
         # run('sudo %s' % UPDATE_CMD)
-        loggerVH.info(subprocess.check_call('git pull',
-                              shell=True, cwd=TGT_DIR))
+        p = subprocess.check_call('git pull',
+                                  shell=True, cwd=TGT_DIR,
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        for line in iter(p.stdout.readline, b''):
+            loggerVH.info(line),
         # subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-U',
         #                        'git+https://github.com/damonmcc/ViewHive#egg=ViewHive'])
         loggerVH.info("Update complete, restarting program")
