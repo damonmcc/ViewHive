@@ -503,7 +503,7 @@ class Schedule(object):
                 tempEvent['start'] = curTime
                 i += 1
             else:
-                loggerWP.debug("NON-command on this line " + curCommand)
+                loggerWP.debug("NON-command on this line %s" % curCommand)
                 i += 1
 
     #
