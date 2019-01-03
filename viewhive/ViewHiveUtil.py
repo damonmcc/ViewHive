@@ -16,7 +16,7 @@ UPDATE_CMD = ( # base command
 ) % (SRC_DIR, TGT_DIR)
 from viewhive.WittyPi import *
 loggerVH = logging.getLogger('vhutil')
-VH_VERSION = "0.9.7.3"
+VH_VERSION = "0.9.7.4"
 # FONT_PATH = os.environ.get("FONT_PATH", "/viewhive/GameCube.ttf")
 
 
@@ -825,11 +825,15 @@ class Display(object):
         self.draw.text((x + self.padding, self.height / 2 - self.textHpad),
                        "UPDATING...", font=self.fontBig, fill=0)
         self.update()
-        loggerVH.info("Updating with: ")
-        loggerVH.info(UPDATE_CMD)
+        loggerVH.info("Clearing changes with: git reset --hard origin/master")
+        subprocess.check_call('git reset --hard origin/master',
+                              shell=True, cwd=TGT_DIR)
+        loggerVH.info("Updating with: git pull")
         # run('sudo %s' % UPDATE_CMD)
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-U',
-                               'git+https://github.com/damonmcc/ViewHive#egg=ViewHive'])
+        subprocess.check_call('git pull',
+                              shell=True, cwd=TGT_DIR)
+        # subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-U',
+        #                        'git+https://github.com/damonmcc/ViewHive#egg=ViewHive'])
         loggerVH.info("Update complete, restarting program")
         # Draw a small black filled box to clear the image.
         self.draw.rectangle((x, self.top, self.width, self.bottom), outline=0, fill=0)
@@ -846,6 +850,7 @@ class Display(object):
         sys.stdout.flush()  # flushing data buffered on open files
         # os.chdir(SRC_DIR)
         restartSRC = '/docs/RPi-scripts/restartVH.sh'
+
 
         subprocess.call("./docs/restartVH.sh")
 
