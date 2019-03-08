@@ -57,9 +57,11 @@ class Display(object):
 
         # print("Current Working Directory: {}".format(os.getcwd()))
         self.fontDefault = ImageFont.load_default()
+        self.font = self.fontDefault
+        self.fontSmall = self.font
         # self.font = ImageFont.load("GameCube.ttf")
-        self.font = ImageFont.truetype("GameCube.ttf", 6)
-        self.fontSmall = ImageFont.truetype("GameCube.ttf", 7)
+        # self.font = ImageFont.truetype("GameCube.ttf", 6)
+        # self.fontSmall = ImageFont.truetype("GameCube.ttf", 7)
         self.extraInfo = ''
 
         print('..schedule..')
