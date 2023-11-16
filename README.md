@@ -7,7 +7,7 @@ Scheduled recording times are set with a rotary encoder while an OLED display sh
 After a period of inactivity, the camera shuts down to conserve power, only starting up to record or after pressing the power switch.
 
 ## Instructions for Use
-* (coming soon)
+[PDF](https://github.com/damonmcc/ViewHive/blob/stable/docs/ViewHive%20User%20Manual%20RevB.pdf) in `/docs`
 
 
 ## Parts
